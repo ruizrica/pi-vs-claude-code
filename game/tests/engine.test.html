@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Engine Tests</title>
+    <style>
+        body { background: #111; color: #0f0; font-family: monospace; padding: 20px; }
+        .pass { color: #0f0; }
+        .fail { color: #f00; }
+        .section { color: #0ff; margin-top: 10px; }
+        #results { white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>Engine Tests</h1>
+    <canvas id="testCanvas" width="960" height="640" style="display:none;"></canvas>
+    <div id="results"></div>
+    <script src="../js/contracts.js"></script>
+    <script src="../js/engine.js"></script>
+    <script>
+    const results = document.getElementById('results');
+    let passed = 0, failed = 0;
+
+    function assert(condition, msg) {
+        if (condition) {
+            results.innerHTML += `<span class="pass">  ✓ ${msg}</span>\n`;
+            passed++;
+        } else {
+            results.innerHTML += `<span class="fail">  ✗ ${msg}</span>\n`;
+            failed++;
+        }
+    }
+
+    function section(name) {
+        results.innerHTML += `<span class="section">\n▸ ${name}</span>\n`;
+    }
+
+    // ── Tests ──
+    section('Engine namespace');
+    assert(typeof Game.Engine === 'object', 'Game.Engine exists');
+    assert(typeof Game.Engine.init === 'function', 'Engine.init is a function');
+    assert(typeof Game.Engine.update === 'function', 'Engine.update is a function');
+    assert(typeof Game.Engine.draw === 'function', 'Engine.draw is a function');
+    assert(typeof Game.Engine.gameLoop === 'function', 'Engine.gameLoop is a function');
+
+    section('Input system');
+    assert(typeof Game.Engine.keys === 'object', 'Engine.keys exists');
+    assert(Game.Engine.keys.w === false, 'keys.w initialized to false');
+    assert(Game.Engine.keys.a === false, 'keys.a initialized to false');
+    assert(Game.Engine.keys.s === false, 'keys.s initialized to false');
+    assert(Game.Engine.keys.d === false, 'keys.d initialized to false');
+    assert(Game.Engine.keys.space === false, 'keys.space initialized to false');
+    assert(Game.Engine.keys.escape === false, 'keys.escape initialized to false');
+    assert(typeof Game.Engine.mouse === 'object', 'Engine.mouse exists');
+    assert(Game.Engine.mouse.x === 0, 'mouse.x initialized to 0');
+    assert(Game.Engine.mouse.y === 0, 'mouse.y initialized to 0');
+    assert(Game.Engine.mouse.down === false, 'mouse.down initialized to false');
+
+    section('Collision system');
+    assert(typeof Game.Engine.checkWallCollision === 'function', 'checkWallCollision exists');
+    // Test with a simple tilemap — 0=floor, 1=wall
+    const testMap = [
+        [1,1,1,1,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,1,1,1,1],
+    ];
+    const TS = Game.CONST.TILE_SIZE;
+    // Center of open area — should NOT be blocked
+    let r = Game.Engine.checkWallCollision(2.5*TS, 2.5*TS, 10, testMap);
+    assert(r.blocked === false, 'Open space is not blocked');
+    // Inside a wall — should be blocked
+    let r2 = Game.Engine.checkWallCollision(0, 0, 10, testMap);
+    assert(r2.blocked === true, 'Wall position is blocked');
+
+    section('Particle system');
+    assert(typeof Game.Engine.addParticle === 'function', 'addParticle exists');
+    assert(Array.isArray(Game.Engine.particles), 'particles array exists');
+    const pCount = Game.Engine.particles.length;
+    Game.Engine.addParticle({ x: 100, y: 100, vx: 1, vy: -1, life: 30, color: '#fff', size: 3 });
+    assert(Game.Engine.particles.length === pCount + 1, 'Particle added');
+    assert(Game.Engine.particles[Game.Engine.particles.length-1].life === 30, 'Particle has correct life');
+
+    section('Camera system');
+    assert(typeof Game.Engine.camera === 'object', 'Camera object exists');
+    assert(typeof Game.Engine.camera.x === 'number', 'Camera.x is a number');
+    assert(typeof Game.Engine.camera.y === 'number', 'Camera.y is a number');
+
+    section('Init with canvas');
+    const canvas = document.getElementById('testCanvas');
+    Game.Engine.init(canvas);
+    assert(Game.Engine.canvas === canvas, 'Canvas stored on engine');
+    assert(Game.Engine.ctx !== null, 'Context created');
+    assert(Game.Engine.ctx instanceof CanvasRenderingContext2D, 'Context is 2D');
+
+    section('Game state machine');
+    assert(Game.state.screen === 'menu', 'Initial screen is menu');
+
+    // Summary
+    results.innerHTML += `\n═══════════════════════════════════\n`;
+    results.innerHTML += `<span class="${failed === 0 ? 'pass' : 'fail'}">  Results: ${passed} passed, ${failed} failed</span>\n`;
+    </script>
+</body>
+</html>

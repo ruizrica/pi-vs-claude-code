@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Player Tests</title>
+    <style>
+        body { background: #111; color: #0f0; font-family: monospace; padding: 20px; }
+        .pass { color: #0f0; }
+        .fail { color: #f00; }
+        .section { color: #0ff; margin-top: 10px; }
+        #results { white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>Player Tests</h1>
+    <canvas id="testCanvas" width="960" height="640" style="display:none;"></canvas>
+    <div id="results"></div>
+    <script src="../js/contracts.js"></script>
+    <script src="../js/engine.js"></script>
+    <script src="../js/player.js"></script>
+    <script>
+    const results = document.getElementById('results');
+    let passed = 0, failed = 0;
+
+    function assert(condition, msg) {
+        if (condition) {
+            results.innerHTML += `<span class="pass">  ✓ ${msg}</span>\n`;
+            passed++;
+        } else {
+            results.innerHTML += `<span class="fail">  ✗ ${msg}</span>\n`;
+            failed++;
+        }
+    }
+
+    function section(name) {
+        results.innerHTML += `<span class="section">\n▸ ${name}</span>\n`;
+    }
+
+    // Setup
+    const canvas = document.getElementById('testCanvas');
+    Game.Engine.init(canvas);
+
+    // ── Tests ──
+    section('Player namespace');
+    assert(typeof Game.Player === 'object', 'Game.Player exists');
+    assert(typeof Game.Player.init === 'function', 'Player.init is a function');
+    assert(typeof Game.Player.update === 'function', 'Player.update is a function');
+    assert(typeof Game.Player.draw === 'function', 'Player.draw is a function');
+    assert(typeof Game.Player.takeDamage === 'function', 'Player.takeDamage exists');
+    assert(typeof Game.Player.shoot === 'function', 'Player.shoot exists');
+    assert(typeof Game.Player.dash === 'function', 'Player.dash exists');
+
+    section('Player init');
+    Game.Player.init();
+    assert(Game.Player.hp === Game.CONST.PLAYER_MAX_HP, 'HP set to max');
+    assert(Game.Player.maxHp === Game.CONST.PLAYER_MAX_HP, 'maxHp matches CONST');
+    assert(Game.Player.speed === Game.CONST.PLAYER_SPEED, 'Speed from CONST');
+    assert(Game.Player.alive === true, 'Player starts alive');
+    assert(Game.Player.invulnerable === false, 'Player starts vulnerable');
+    assert(typeof Game.Player.x === 'number', 'Player has x');
+    assert(typeof Game.Player.y === 'number', 'Player has y');
+    assert(Game.Player.score === 0, 'Score starts at 0');
+    assert(Array.isArray(Game.Player.projectiles), 'Projectiles array exists');
+
+    section('Player takeDamage');
+    Game.Player.init();
+    let hitEmitted = false;
+    Game.Events.on('player-hit', () => { hitEmitted = true; });
+    Game.Player.takeDamage(20);
+    assert(Game.Player.hp === Game.CONST.PLAYER_MAX_HP - 20, 'HP reduced by damage');
+    assert(Game.Player.invulnerable === true, 'Player becomes invulnerable after hit');
+    assert(hitEmitted, 'player-hit event emitted');
+
+    // Taking damage while invulnerable should not reduce HP
+    const hpAfter = Game.Player.hp;
+    Game.Player.takeDamage(20);
+    assert(Game.Player.hp === hpAfter, 'No damage while invulnerable');
+
+    section('Player death');
+    Game.Player.init();
+    let deathEmitted = false;
+    Game.Events.on('player-death', () => { deathEmitted = true; });
+    Game.Player.takeDamage(200);
+    assert(Game.Player.hp <= 0, 'HP drops to 0 or below');
+    assert(Game.Player.alive === false, 'Player is dead');
+    assert(deathEmitted, 'player-death event emitted');
+
+    section('Player shoot');
+    Game.Player.init();
+    let shootEmitted = false;
+    Game.Events.on('player-shoot', () => { shootEmitted = true; });
+    // Simulate mouse at right of player
+    Game.Engine.mouse.x = Game.Player.x + 100;
+    Game.Engine.mouse.y = Game.Player.y;
+    Game.Player.shootCooldown = 0; // ensure ready
+    Game.Player.shoot();
+    assert(Game.Player.projectiles.length === 1, 'Projectile created');
+    assert(shootEmitted, 'player-shoot event emitted');
+    const proj = Game.Player.projectiles[0];
+    assert(proj.vx > 0, 'Projectile moves toward mouse (positive vx)');
+    assert(Math.abs(proj.vy) < 0.01, 'Projectile vy near zero for horizontal shot');
+
+    section('Player dash');
+    Game.Player.init();
+    Game.Player.dashCooldown = 0;
+    // Set movement direction
+    Game.Engine.keys.d = true;
+    Game.Player.dash();
+    assert(Game.Player.dashTimer > 0, 'Dash timer started');
+    assert(Game.Player.invulnerable === true, 'Invulnerable during dash');
+    Game.Engine.keys.d = false;
+
+    section('Projectile properties');
+    Game.Player.init();
+    Game.Player.shootCooldown = 0;
+    Game.Engine.mouse.x = Game.Player.x + 100;
+    Game.Engine.mouse.y = Game.Player.y;
+    Game.Player.shoot();
+    const p = Game.Player.projectiles[0];
+    assert(typeof p.x === 'number', 'Projectile has x');
+    assert(typeof p.y === 'number', 'Projectile has y');
+    assert(typeof p.vx === 'number', 'Projectile has vx');
+    assert(typeof p.vy === 'number', 'Projectile has vy');
+    assert(typeof p.damage === 'number', 'Projectile has damage');
+    assert(p.damage === Game.CONST.PROJECTILE_DAMAGE, 'Projectile damage from CONST');
+
+    // Summary
+    results.innerHTML += `\n═══════════════════════════════════\n`;
+    results.innerHTML += `<span class="${failed === 0 ? 'pass' : 'fail'}">  Results: ${passed} passed, ${failed} failed</span>\n`;
+    </script>
+</body>
+</html>
