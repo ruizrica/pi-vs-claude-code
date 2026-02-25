@@ -215,12 +215,9 @@ export default function (pi: ExtensionAPI) {
 	};
 
 	const refreshFooter = (ctx: ExtensionContext) => {
-		ctx.ui.setFooter((tui, theme, footerData) => {
-			const unsub = footerData.onBranchChange(() => tui.requestRender());
-
+		ctx.ui.setWidget("tilldone-list", (_tui, theme) => {
+			const text = new Text("", 0, 0);
 			return {
-				dispose: unsub,
-				invalidate() {},
 				render(width: number): string[] {
 					const done = tasks.filter((t) => t.status === "done").length;
 					const active = tasks.filter((t) => t.status === "inprogress").length;
@@ -233,7 +230,7 @@ export default function (pi: ExtensionAPI) {
 						: theme.fg("dim", " TillDone ");
 
 					const l1Left = total === 0
-						? titleDisplay + theme.fg("muted", "no tasks")
+						? theme.fg("muted", "tasks: 0")
 						: titleDisplay +
 							theme.fg("warning", "[") +
 							theme.fg("success", `${done}`) +
@@ -253,33 +250,37 @@ export default function (pi: ExtensionAPI) {
 					const pad1 = " ".repeat(Math.max(1, width - visibleWidth(l1Left) - visibleWidth(l1Right)));
 					const line1 = truncateToWidth(l1Left + pad1 + l1Right, width, "");
 
-					if (total === 0) return [line1];
+					const lines: string[] = [line1];
 
-					// ── Rows: inprogress first, then most recent done, max 5 ──
-					const activeTasks = tasks.filter((t) => t.status === "inprogress");
-					const doneTasks = tasks.filter((t) => t.status === "done").reverse();
-					const visible = [...activeTasks, ...doneTasks].slice(0, 5);
-					const remaining = total - visible.length;
+					if (total > 0) {
+						// ── Rows: inprogress first, then most recent done, max 5 ──
+						const activeTasks = tasks.filter((t) => t.status === "inprogress");
+						const doneTasks = tasks.filter((t) => t.status === "done").reverse();
+						const visible = [...activeTasks, ...doneTasks].slice(0, 5);
+						const remaining = total - visible.length;
 
-					const rows = visible.map((t) => {
-						const icon = t.status === "done"
-							? theme.fg("success", STATUS_ICON.done)
-							: theme.fg("accent", STATUS_ICON.inprogress);
-						const text = t.status === "done"
-							? theme.fg("dim", t.text)
-							: theme.fg("success", t.text);
-						return truncateToWidth(` ${icon} ${text}`, width, "");
-					});
+						for (const t of visible) {
+							const icon = t.status === "done"
+								? theme.fg("success", STATUS_ICON.done)
+								: theme.fg("accent", STATUS_ICON.inprogress);
+							const txt = t.status === "done"
+								? theme.fg("dim", t.text)
+								: theme.fg("success", t.text);
+							lines.push(truncateToWidth(` ${icon} ${txt}`, width, ""));
+						}
 
-					if (remaining > 0) {
-						rows.push(truncateToWidth(
-							` ${theme.fg("dim", `  +${remaining} more`)}`,
-							width, "",
-						));
+						if (remaining > 0) {
+							lines.push(truncateToWidth(
+								` ${theme.fg("dim", `  +${remaining} more`)}`,
+								width, "",
+							));
+						}
 					}
 
-					return [line1, ...rows];
+					text.setText(lines.join("\n"));
+					return text.render(width);
 				},
+				invalidate() { text.invalidate(); },
 			};
 		});
 	};
