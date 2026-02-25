@@ -284,7 +284,7 @@ export default function (pi: ExtensionAPI) {
 	let phaseStates: PhaseState[] = [];
 	let currentPhaseIndex = 0;
 	let widgetCtx: any;
-	let widgetCollapsed = false;
+	let widgetCollapsed = true;
 	let sessionDir = "";
 	let contextWindow = 0;
 
@@ -1167,34 +1167,37 @@ ${contextSummary}${planSection}${reviewSection}
 			"info",
 		);
 
-		// Footer: model | pipeline name | phase | context bar
-		_ctx.ui.setFooter((_tui, theme, _footerData) => ({
-			dispose: () => {},
-			invalidate() {},
-			render(width: number): string[] {
-				const model = _ctx.model?.id || "no-model";
-				const usage = _ctx.getContextUsage();
-				const pct = usage ? usage.percent : 0;
-				const filled = Math.round(pct / 10);
-				const bar = "#".repeat(filled) + "-".repeat(10 - filled);
+		// Status bar: model | pipeline name | phase | context bar (belowEditor widget)
+		_ctx.ui.setWidget("pipeline-status-bar", (_tui, theme) => {
+			const text = new Text("", 0, 0);
+			return {
+				render(width: number): string[] {
+					const model = _ctx.model?.id || "no-model";
+					const usage = _ctx.getContextUsage();
+					const pct = usage ? usage.percent : 0;
+					const filled = Math.round(pct / 10);
+					const bar = "#".repeat(filled) + "-".repeat(10 - filled);
 
-				const pipeLabel = activeConfig
-					? theme.fg("accent", activeConfig.name)
-					: theme.fg("dim", "no pipeline");
-				const phaseLabel = phaseStates[currentPhaseIndex]
-					? theme.fg("success", phaseStates[currentPhaseIndex].def.name.toUpperCase())
-					: "";
+					const pipeLabel = activeConfig
+						? theme.fg("accent", activeConfig.name)
+						: theme.fg("dim", "no pipeline");
+					const phaseLabel = phaseStates[currentPhaseIndex]
+						? theme.fg("success", phaseStates[currentPhaseIndex].def.name.toUpperCase())
+						: "";
 
-				const left = theme.fg("dim", ` ${model}`) +
-					theme.fg("muted", " · ") +
-					pipeLabel +
-					theme.fg("muted", " · ") +
-					phaseLabel;
-				const right = theme.fg("dim", `[${bar}] ${Math.round(pct)}% `);
-				const pad = " ".repeat(Math.max(1, width - visibleWidth(left) - visibleWidth(right)));
+					const left = theme.fg("dim", ` ${model}`) +
+						theme.fg("muted", " · ") +
+						pipeLabel +
+						theme.fg("muted", " · ") +
+						phaseLabel;
+					const right = theme.fg("dim", `[${bar}] ${Math.round(pct)}% `);
+					const pad = " ".repeat(Math.max(1, width - visibleWidth(left) - visibleWidth(right)));
 
-				return [truncateToWidth(left + pad + right, width)];
-			},
-		}));
+					text.setText(truncateToWidth(left + pad + right, width));
+					return text.render(width);
+				},
+				invalidate() { text.invalidate(); },
+			};
+		}, { placement: "belowEditor" });
 	});
 }
