@@ -33,6 +33,7 @@ export const THEME_MAP: Record<string, string> = {
 	"subagent-widget":    "cyberpunk",        // multi-agent futuristic
 	"system-select":      "catppuccin-mocha", // soft selection UI
 	"theme-cycler":       "synthwave",        // neon, it's a theme tool
+	"mic":                "nord",             // cool, structured orchestrator
 	"tilldone":           "everforest",       // task-focused calm
 	"tool-counter":       "synthwave",        // techy metrics
 	"tool-counter-widget":"synthwave",        // same family

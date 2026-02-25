@@ -1,0 +1,25 @@
+lane_model: openrouter/google/gemini-3-flash-preview
+
+review_models:
+  - openrouter/anthropic/claude-3.5-sonnet
+  - openrouter/google/gemini-2.0-flash
+  - openrouter/openai/gpt-4-turbo
+
+review:
+  passing_score: 0.80
+  min_approvals: 2
+  max_revision_attempts: 3
+
+lanes:
+  max_parallel: 4
+
+file_ownership:
+  shared:
+    - package.json
+    - tsconfig.json
+    - src/types/**
+    - src/config/**
+  readonly:
+    - .git/**
+    - node_modules/**
+    - dist/**

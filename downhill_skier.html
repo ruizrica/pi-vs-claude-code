@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Downhill Skier Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 100%);
+            border: 3px solid #333;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #333;
+            font-size: 18px;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        #score {
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px 15px;
+            border-radius: 5px;
+        }
+
+        #speed {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px 15px;
+            border-radius: 5px;
+        }
+
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 100;
+            display: none;
+            min-width: 300px;
+        }
+
+        #gameOver h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        #gameOver p {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        #gameOver button {
+            margin-top: 20px;
+            padding: 12px 30px;
+            font-size: 18px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        #gameOver button:hover {
+            background: #764ba2;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            text-align: right;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="ui">
+            <div id="score">Score: 0</div>
+            <div id="speed">Speed: 0</div>
+        </div>
+        <div id="gameOver">
+            <h1>CRASHED!</h1>
+            <p id="finalScore">Final Score: 0</p>
+            <p id="finalDistance">Distance: 0m</p>
+            <button onclick="location.reload()">Play Again</button>
+        </div>
+        <div id="controls">
+            <div><strong>Controls:</strong></div>
+            <div>W - Accelerate</div>
+            <div>A - Left</div>
+            <div>S - Brake</div>
+            <div>D - Right</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Game variables
+        const gameState = {
+            width: 800,
+            height: 600,
+            isRunning: true,
+            score: 0,
+            distance: 0
+        };
+
+        // Player (skier)
+        const player = {
+            x: gameState.width / 2,
+            y: 100,
+            width: 20,
+            height: 30,
+            vx: 0,
+            vy: 3,
+            speed: 0,
+            maxSpeed: 15,
+            friction: 0.95,
+            acceleration: 0.3
+        };
+
+        // Input handling
+        const keys = {};
+        window.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+        });
+        window.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        // Obstacles
+        const obstacles = [];
+        const obstacleSize = 25;
+
+        // Trees
+        const trees = [];
+        let treeSpawnDistance = 0;
+
+        class Obstacle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = obstacleSize;
+                this.height = obstacleSize;
+            }
+
+            draw() {
+                // Draw rock
+                ctx.fillStyle = '#8B7355';
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y, this.width / 2, this.height / 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Highlight
+                ctx.fillStyle = '#A0826D';
+                ctx.beginPath();
+                ctx.ellipse(this.x - 5, this.y - 5, this.width / 4, this.height / 4, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            collidesWith(player) {
+                return (
+                    player.x < this.x + this.width &&
+                    player.x + player.width > this.x &&
+                    player.y < this.y + this.height &&
+                    player.y + player.height > this.y
+                );
+            }
+        }
+
+        class Tree {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = 40;
+                this.height = 60;
+            }
+
+            draw() {
+                // Trunk
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(this.x - 8, this.y + 40, 16, 20);
+
+                // Foliage
+                ctx.fillStyle = '#228B22';
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y + 30, 25, 35, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Darker shade for depth
+                ctx.fillStyle = '#1a6b1a';
+                ctx.beginPath();
+                ctx.ellipse(this.x - 10, this.y + 35, 15, 20, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            collidesWith(player) {
+                return (
+                    player.x < this.x + this.width &&
+                    player.x + player.width > this.x - this.width / 2 &&
+                    player.y < this.y + this.height &&
+                    player.y + player.height > this.y
+                );
+            }
+        }
+
+        function drawSkier() {
+            ctx.save();
+            ctx.translate(player.x, player.y);
+
+            // Skis
+            ctx.strokeStyle = '#FF4500';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(-8, player.height);
+            ctx.lineTo(-8, 0);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(8, player.height);
+            ctx.lineTo(8, 0);
+            ctx.stroke();
+
+            // Skier body
+            ctx.fillStyle = '#FF6B6B';
+            ctx.fillRect(-6, 5, 12, 15);
+
+            // Head
+            ctx.fillStyle = '#FDBCB4';
+            ctx.beginPath();
+            ctx.arc(0, 2, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eyes
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(-2, 1, 1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(2, 1, 0.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function spawnObstacles() {
+            // Spawn obstacles ahead of the player
+            if (gameState.distance % 100 < 5) {
+                const x = Math.random() * (gameState.width - 60) + 30;
+                const y = -50;
+                obstacles.push(new Obstacle(x, y));
+            }
+        }
+
+        function spawnTrees() {
+            // Spawn trees at the edges
+            if (treeSpawnDistance % 150 < 5) {
+                const x = Math.random() < 0.5 ? 30 : gameState.width - 30;
+                const y = -100;
+                trees.push(new Tree(x, y));
+            }
+            treeSpawnDistance++;
+        }
+
+        function update() {
+            if (!gameState.isRunning) return;
+
+            // Handle input
+            if (keys['w']) {
+                player.vy = Math.max(player.vy - player.acceleration, 3);
+            }
+            if (keys['s']) {
+                player.vy = Math.min(player.vy + player.acceleration, 3);
+            }
+            if (keys['a']) {
+                player.vx = Math.max(player.vx - 0.5, -8);
+            }
+            if (keys['d']) {
+                player.vx = Math.min(player.vx + 0.5, 8);
+            }
+
+            // Apply friction
+            player.vx *= player.friction;
+
+            // Update position
+            player.x += player.vx;
+            player.y += player.vy;
+
+            // Keep player in bounds horizontally
+            if (player.x < 10) player.x = 10;
+            if (player.x > gameState.width - 10) player.x = gameState.width - 10;
+
+            // Update score and distance
+            gameState.score += Math.floor(player.vy);
+            gameState.distance += Math.floor(player.vy) / 10;
+
+            // Update speed display
+            player.speed = Math.sqrt(player.vx * player.vx + player.vy * player.vy);
+
+            // Spawn obstacles and trees
+            spawnObstacles();
+            spawnTrees();
+
+            // Update obstacles
+            obstacles.forEach((obstacle, index) => {
+                obstacle.y += player.vy;
+
+                // Check collision
+                if (obstacle.collidesWith(player)) {
+                    endGame();
+                }
+
+                // Remove off-screen obstacles
+                if (obstacle.y > gameState.height) {
+                    obstacles.splice(index, 1);
+                }
+            });
+
+            // Update trees
+            trees.forEach((tree, index) => {
+                tree.y += player.vy;
+
+                // Check collision
+                if (tree.collidesWith(player)) {
+                    endGame();
+                }
+
+                // Remove off-screen trees
+                if (tree.y > gameState.height) {
+                    trees.splice(index, 1);
+                }
+            });
+
+            // Game over if went too far down
+            if (player.y > gameState.height) {
+                endGame();
+            }
+        }
+
+        function draw() {
+            // Clear canvas with sky gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, gameState.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(1, '#E0F6FF');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, gameState.width, gameState.height);
+
+            // Draw snow/slope
+            ctx.fillStyle = '#FFFFFF';
+            ctx.globalAlpha = 0.3;
+            for (let i = 0; i < gameState.height; i += 50) {
+                ctx.fillRect(0, i, gameState.width, 2);
+            }
+            ctx.globalAlpha = 1;
+
+            // Draw trees
+            trees.forEach(tree => tree.draw());
+
+            // Draw obstacles
+            obstacles.forEach(obstacle => obstacle.draw());
+
+            // Draw skier
+            drawSkier();
+
+            // Update UI
+            document.getElementById('score').textContent = `Score: ${gameState.score}`;
+            document.getElementById('speed').textContent = `Speed: ${Math.floor(player.speed)}`;
+        }
+
+        function endGame() {
+            gameState.isRunning = false;
+            document.getElementById('finalScore').textContent = `Final Score: ${gameState.score}`;
+            document.getElementById('finalDistance').textContent = `Distance: ${Math.floor(gameState.distance)}m`;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start the game
+        gameLoop();
+    </script>
+</body>
+</html>

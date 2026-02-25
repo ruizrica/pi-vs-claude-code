@@ -9,6 +9,7 @@ __pycache__/
 .env
 
 .pi/agent-sessions/
+.mic/
 
 
 .playwright-cli/

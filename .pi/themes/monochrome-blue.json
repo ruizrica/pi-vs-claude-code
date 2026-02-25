@@ -1,0 +1,94 @@
+{
+  "$schema": "https://unpkg.com/@anthropic-ai/pitools@latest/theme.schema.json",
+  "name": "monochrome-blue",
+
+  "vars": {
+    "bg0":        "#0d0f14",
+    "bg1":        "#131620",
+    "bg2":        "#1a1e2a",
+    "bg3":        "#222839",
+    "border0":    "#2a3147",
+    "border1":    "#364060",
+    "slate":      "#4d5a78",
+    "steel":      "#6a7ea0",
+    "lightSteel": "#90a4c4",
+    "ice":        "#c4d4ee",
+    "white":      "#dde6f4",
+    "blue":       "#3a7bd5",
+    "brightBlue": "#5194f0",
+    "skyBlue":    "#6aadff",
+    "paleBlue":   "#88c4ff",
+    "dimBlue":    "#283a5e",
+    "deepGreen":  "#2a5a4a",
+    "deepRed":    "#5a2a35",
+    "softRed":    "#d06070",
+    "softGreen":  "#50b080",
+    "softYellow": "#c0a050"
+  },
+
+  "colors": {
+    "accent":             "brightBlue",
+    "border":             "border1",
+    "borderAccent":       "brightBlue",
+    "borderMuted":        "border0",
+    "success":            "softGreen",
+    "error":              "softRed",
+    "warning":            "softYellow",
+    "muted":              "steel",
+    "dim":                "slate",
+    "text":               "ice",
+    "thinkingText":       "steel",
+
+    "selectedBg":         "bg3",
+    "userMessageBg":      "bg2",
+    "userMessageText":    "ice",
+    "customMessageBg":    "bg2",
+    "customMessageText":  "lightSteel",
+    "customMessageLabel": "brightBlue",
+    "toolPendingBg":      "bg1",
+    "toolSuccessBg":      "#152030",
+    "toolErrorBg":        "#201520",
+    "toolTitle":          "skyBlue",
+    "toolOutput":         "lightSteel",
+
+    "mdHeading":          "brightBlue",
+    "mdLink":             "skyBlue",
+    "mdLinkUrl":          "steel",
+    "mdCode":             "paleBlue",
+    "mdCodeBlock":        "lightSteel",
+    "mdCodeBlockBorder":  "border1",
+    "mdQuote":            "steel",
+    "mdQuoteBorder":      "border0",
+    "mdHr":               "border0",
+    "mdListBullet":       "blue",
+
+    "toolDiffAdded":      "softGreen",
+    "toolDiffRemoved":    "softRed",
+    "toolDiffContext":    "slate",
+
+    "syntaxComment":      "slate",
+    "syntaxKeyword":      "brightBlue",
+    "syntaxFunction":     "skyBlue",
+    "syntaxVariable":     "lightSteel",
+    "syntaxString":       "#5a9abf",
+    "syntaxNumber":       "paleBlue",
+    "syntaxType":         "blue",
+    "syntaxOperator":     "steel",
+    "syntaxPunctuation":  "slate",
+
+    "thinkingOff":        "border0",
+    "thinkingMinimal":    "#2a3a5a",
+    "thinkingLow":        "#304570",
+    "thinkingMedium":     "blue",
+    "thinkingHigh":       "brightBlue",
+    "thinkingXhigh":      "skyBlue",
+
+    "bashMode":           "softYellow"
+  },
+
+  "export": {
+    "pageBg":  "#0d0f14",
+    "cardBg":  "#131620",
+    "infoBg":  "#1a1e2a"
+  }
+}
