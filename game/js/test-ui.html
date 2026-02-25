@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html>
+<head><title>UI Tests</title></head>
+<body>
+<canvas id="gameCanvas" width="960" height="640"></canvas>
+<pre id="output"></pre>
+<script>
+// Minimal test harness
+let passed = 0, failed = 0, tests = [];
+function test(name, fn) { tests.push({ name, fn }); }
+function assert(cond, msg) { if (!cond) throw new Error(msg || 'Assertion failed'); }
+function assertEqual(a, b, msg) { if (a !== b) throw new Error(msg || `Expected ${b}, got ${a}`); }
+
+function runTests() {
+    const out = document.getElementById('output');
+    for (const t of tests) {
+        try {
+            t.fn();
+            passed++;
+            out.textContent += `✅ ${t.name}\n`;
+        } catch (e) {
+            failed++;
+            out.textContent += `❌ ${t.name}: ${e.message}\n`;
+        }
+    }
+    out.textContent += `\n${passed} passed, ${failed} failed\n`;
+    // For headless testing
+    window.__TEST_RESULTS = { passed, failed };
+    if (failed > 0) console.error(`${failed} tests failed`);
+    else console.log(`All ${passed} tests passed`);
+}
+</script>
+
+<!-- Load contracts first to set up Game namespace -->
+<script src="contracts.js"></script>
+
+<!-- Mock other modules that UI may read from -->
+<script>
+// Mock Player
+window.Game.Player = {
+    hp: 75, maxHp: 100, x: 160, y: 160,
+    dashCooldown: 20,
+    init() { this.hp = 100; this.x = 160; this.y = 160; this.dashCooldown = 0; }
+};
+
+// Mock Enemies
+window.Game.Enemies = {
+    getAll() { return [
+        { x: 200, y: 200, alive: true },
+        { x: 300, y: 100, alive: true },
+    ]; },
+    count() { return 2; },
+    init() {}
+};
+
+// Mock Bosses
+window.Game.Bosses = {
+    getActive() { return { name: 'The Warden', hp: 200, maxHp: 300, x: 400, y: 300 }; },
+    init() {}
+};
+
+// Mock Levels
+window.Game.Levels = {
+    getCurrentTilemap() {
+        // Simple 30x20 tilemap: walls on edges, floor inside
+        const map = [];
+        for (let y = 0; y < 20; y++) {
+            map[y] = [];
+            for (let x = 0; x < 30; x++) {
+                map[y][x] = (x === 0 || x === 29 || y === 0 || y === 19) ? 1 : 0;
+            }
+        }
+        return map;
+    },
+    getPlayerSpawn() { return { x: 160, y: 160 }; },
+    loadLevel() {},
+    init() {}
+};
+
+// Mock Effects
+window.Game.Effects = { init() {} };
+
+// Mock Engine (minimal)
+window.Game.Engine = {
+    canvas: null,
+    ctx: null,
+    init(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+    },
+    start() {},
+    keys: {},
+    mouse: { x: 0, y: 0, down: false },
+    camera: { x: 0, y: 0 }
+};
+</script>
+
+<!-- Load the UI module under test -->
+<script src="ui.js"></script>
+
+<!-- Tests -->
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// ── Structure Tests ──────────────────────────────────────────
+
+test('Game.UI exists', () => {
+    assert(window.Game.UI !== undefined, 'Game.UI should be defined');
+});
+
+test('Game.UI has init()', () => {
+    assert(typeof Game.UI.init === 'function', 'init should be a function');
+});
+
+test('Game.UI has draw()', () => {
+    assert(typeof Game.UI.draw === 'function', 'draw should be a function');
+});
+
+test('Game.UI has drawMenu()', () => {
+    assert(typeof Game.UI.drawMenu === 'function', 'drawMenu should be a function');
+});
+
+test('Game.UI has drawPause()', () => {
+    assert(typeof Game.UI.drawPause === 'function', 'drawPause should be a function');
+});
+
+test('Game.UI has drawGameOver()', () => {
+    assert(typeof Game.UI.drawGameOver === 'function', 'drawGameOver should be a function');
+});
+
+test('Game.UI has drawVictory()', () => {
+    assert(typeof Game.UI.drawVictory === 'function', 'drawVictory should be a function');
+});
+
+test('Game.UI has drawLevelComplete()', () => {
+    assert(typeof Game.UI.drawLevelComplete === 'function', 'drawLevelComplete should be a function');
+});
+
+test('Game.UI has drawHUD()', () => {
+    assert(typeof Game.UI.drawHUD === 'function', 'drawHUD should be a function');
+});
+
+// ── Init Tests ──────────────────────────────────────────────
+
+test('init() does not throw', () => {
+    Game.UI.init();
+});
+
+// ── Draw Tests (no throw) ──────────────────────────────────
+
+test('drawMenu does not throw', () => {
+    Game.state.screen = 'menu';
+    Game.UI.drawMenu(ctx);
+});
+
+test('drawHUD does not throw with valid player data', () => {
+    Game.state.screen = 'playing';
+    Game.state.level = 0;
+    Game.state.score = 500;
+    Game.state.kills = 5;
+    Game.state.bossActive = false;
+    Game.UI.drawHUD(ctx);
+});
+
+test('drawHUD with boss active does not throw', () => {
+    Game.state.bossActive = true;
+    Game.UI.drawHUD(ctx);
+    Game.state.bossActive = false;
+});
+
+test('drawPause does not throw', () => {
+    Game.state.screen = 'paused';
+    Game.UI.drawPause(ctx);
+});
+
+test('drawGameOver does not throw', () => {
+    Game.state.screen = 'gameover';
+    Game.state.score = 1234;
+    Game.state.kills = 10;
+    Game.state.level = 1;
+    Game.state.time = 67.5;
+    Game.UI.drawGameOver(ctx);
+});
+
+test('drawVictory does not throw', () => {
+    Game.state.screen = 'victory';
+    Game.state.score = 9999;
+    Game.state.kills = 50;
+    Game.state.time = 180;
+    Game.UI.drawVictory(ctx);
+});
+
+test('drawLevelComplete does not throw', () => {
+    Game.state.screen = 'levelcomplete';
+    Game.state.level = 1;
+    Game.UI.drawLevelComplete(ctx);
+});
+
+test('draw() dispatches to drawMenu on menu screen', () => {
+    Game.state.screen = 'menu';
+    let called = false;
+    const origMenu = Game.UI.drawMenu;
+    Game.UI.drawMenu = (c) => { called = true; origMenu.call(Game.UI, c); };
+    Game.UI.draw(ctx);
+    Game.UI.drawMenu = origMenu;
+    assert(called, 'drawMenu should be called when screen is menu');
+});
+
+test('draw() dispatches to drawHUD on playing screen', () => {
+    Game.state.screen = 'playing';
+    let called = false;
+    const orig = Game.UI.drawHUD;
+    Game.UI.drawHUD = (c) => { called = true; orig.call(Game.UI, c); };
+    Game.UI.draw(ctx);
+    Game.UI.drawHUD = orig;
+    assert(called, 'drawHUD should be called when screen is playing');
+});
+
+test('draw() dispatches to drawPause on paused screen', () => {
+    Game.state.screen = 'paused';
+    let called = false;
+    const orig = Game.UI.drawPause;
+    Game.UI.drawPause = (c) => { called = true; orig.call(Game.UI, c); };
+    Game.UI.draw(ctx);
+    Game.UI.drawPause = orig;
+    assert(called, 'drawPause should be called when screen is paused');
+});
+
+test('draw() dispatches to drawGameOver on gameover screen', () => {
+    Game.state.screen = 'gameover';
+    let called = false;
+    const orig = Game.UI.drawGameOver;
+    Game.UI.drawGameOver = (c) => { called = true; orig.call(Game.UI, c); };
+    Game.UI.draw(ctx);
+    Game.UI.drawGameOver = orig;
+    assert(called, 'drawGameOver should be called on gameover');
+});
+
+test('draw() dispatches to drawVictory on victory screen', () => {
+    Game.state.screen = 'victory';
+    let called = false;
+    const orig = Game.UI.drawVictory;
+    Game.UI.drawVictory = (c) => { called = true; orig.call(Game.UI, c); };
+    Game.UI.draw(ctx);
+    Game.UI.drawVictory = orig;
+    assert(called, 'drawVictory should be called on victory');
+});
+
+test('draw() dispatches to drawLevelComplete on levelcomplete screen', () => {
+    Game.state.screen = 'levelcomplete';
+    let called = false;
+    const orig = Game.UI.drawLevelComplete;
+    Game.UI.drawLevelComplete = (c) => { called = true; orig.call(Game.UI, c); };
+    Game.UI.draw(ctx);
+    Game.UI.drawLevelComplete = orig;
+    assert(called, 'drawLevelComplete should be called on levelcomplete');
+});
+
+// ── Guard tests: missing modules ────────────────────────────
+
+test('drawHUD does not throw when Player is missing', () => {
+    const origPlayer = Game.Player;
+    Game.Player = undefined;
+    Game.state.screen = 'playing';
+    Game.UI.drawHUD(ctx);
+    Game.Player = origPlayer;
+});
+
+test('drawHUD does not throw when Enemies is missing', () => {
+    const orig = Game.Enemies;
+    Game.Enemies = undefined;
+    Game.state.screen = 'playing';
+    Game.UI.drawHUD(ctx);
+    Game.Enemies = orig;
+});
+
+test('drawHUD minimap does not throw when Levels returns empty tilemap', () => {
+    const orig = Game.Levels.getCurrentTilemap;
+    Game.Levels.getCurrentTilemap = () => [];
+    Game.state.screen = 'playing';
+    Game.UI.drawHUD(ctx);
+    Game.Levels.getCurrentTilemap = orig;
+});
+
+test('drawHUD boss bar does not throw when Bosses.getActive returns null', () => {
+    Game.state.bossActive = true;
+    const orig = Game.Bosses.getActive;
+    Game.Bosses.getActive = () => null;
+    Game.UI.drawHUD(ctx);
+    Game.Bosses.getActive = orig;
+    Game.state.bossActive = false;
+});
+
+test('HP bar reflects correct ratio', () => {
+    // Visual test — just ensure no crash with various HP values
+    Game.state.screen = 'playing';
+    Game.Player.hp = 0;
+    Game.UI.drawHUD(ctx);
+    Game.Player.hp = 50;
+    Game.UI.drawHUD(ctx);
+    Game.Player.hp = 100;
+    Game.UI.drawHUD(ctx);
+    Game.Player.hp = 75; // restore
+});
+
+// ── Canvas state restoration ────────────────────────────────
+
+test('draw() restores canvas state (globalAlpha)', () => {
+    ctx.globalAlpha = 1;
+    Game.state.screen = 'playing';
+    Game.UI.draw(ctx);
+    assertEqual(ctx.globalAlpha, 1, 'globalAlpha should be restored to 1');
+});
+
+test('draw() restores canvas state (shadowBlur)', () => {
+    ctx.shadowBlur = 0;
+    Game.state.screen = 'menu';
+    Game.UI.draw(ctx);
+    assertEqual(ctx.shadowBlur, 0, 'shadowBlur should be restored to 0');
+});
+
+// Run all
+runTests();
+</script>
+</body>
+</html>
