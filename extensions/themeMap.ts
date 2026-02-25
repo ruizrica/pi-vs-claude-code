@@ -6,9 +6,7 @@
  * hook to automatically load its designated theme on boot.
  *
  * Available themes (.pi/themes/):
- *   catppuccin-mocha · cyberpunk · dracula · everforest · gruvbox
- *   midnight-ocean   · nord      · ocean-breeze · rose-pine
- *   synthwave        · tokyo-night
+ *   monochrome-blue
  */
 
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
@@ -21,22 +19,25 @@ import { fileURLToPath } from "url";
 // Value = theme name from .pi/themes/<value>.json
 //
 export const THEME_MAP: Record<string, string> = {
-	"agent-chain":        "midnight-ocean",   // deep sequential pipeline
-	"agent-team":         "dracula",          // rich orchestration palette
-	"cross-agent":        "ocean-breeze",     // cross-boundary, connecting
-	"damage-control":     "gruvbox",          // grounded, earthy safety
-	"minimal":            "synthwave",        // synthwave by default now!
-	"pi-pi":              "rose-pine",        // warm creative meta-agent
-	"pure-focus":         "everforest",       // calm, distraction-free
-	"purpose-gate":       "tokyo-night",      // intentional, sharp focus
-	"session-replay":     "catppuccin-mocha", // soft, reflective history
-	"subagent-widget":    "cyberpunk",        // multi-agent futuristic
-	"system-select":      "catppuccin-mocha", // soft selection UI
-	"theme-cycler":       "synthwave",        // neon, it's a theme tool
-	"mic":                "nord",             // cool, structured orchestrator
-	"tilldone":           "everforest",       // task-focused calm
-	"tool-counter":       "synthwave",        // techy metrics
-	"tool-counter-widget":"synthwave",        // same family
+	"agent-chain":        "monochrome-blue",
+	"agent-team":         "monochrome-blue",
+	"cross-agent":        "monochrome-blue",
+	"damage-control":     "monochrome-blue",
+	"minimal":            "monochrome-blue",
+	"pi-pi":              "monochrome-blue",
+	"pure-focus":         "monochrome-blue",
+	"purpose-gate":       "monochrome-blue",
+	"session-replay":     "monochrome-blue",
+	"subagent-widget":    "monochrome-blue",
+	"system-select":      "monochrome-blue",
+	"theme-cycler":       "monochrome-blue",
+	"mic":                "monochrome-blue",
+	"pipeline-team":      "monochrome-blue",
+	"tilldone":           "monochrome-blue",
+	"plan-mode":          "monochrome-blue",
+	"tool-counter":       "monochrome-blue",
+	"tool-counter-widget":"monochrome-blue",
+	"footer":             "monochrome-blue",
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -75,13 +76,13 @@ export function applyExtensionTheme(fileUrl: string, ctx: ExtensionContext): boo
 	let themeName = THEME_MAP[name];
 	
 	if (!themeName) {
-		themeName = "synthwave";
+		themeName = "monochrome-blue";
 	}
 
 	const result = ctx.ui.setTheme(themeName);
-	
-	if (!result.success && themeName !== "synthwave") {
-		return ctx.ui.setTheme("synthwave").success;
+
+	if (!result.success && themeName !== "monochrome-blue") {
+		return ctx.ui.setTheme("monochrome-blue").success;
 	}
 	
 	return result.success;

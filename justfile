@@ -69,13 +69,25 @@ ext-pi-pi:
 ext-mic:
     pi -e extensions/mic.ts -e extensions/theme-cycler.ts
 
+# 16. Plan Mode: Shift+Tab plan workflow UI with optional /sub dispatch
+ext-plan-mode:
+    pi -e extensions/plan-mode.ts -e extensions/theme-cycler.ts
+
+# 17. Pipeline Team: hybrid pipeline with parallel dispatch and Ctrl+X overlay
+ext-pipeline-team:
+    pi -e extensions/pipeline-team.ts -e extensions/theme-cycler.ts
+
 #ext
 
-# 16. Session Replay: scrollable timeline overlay of session history (legit)
+# 19. Footer: minimal dark-bg footer with cwd
+ext-footer:
+	pi -e ui/footer.ts
+
+# 17. Session Replay: scrollable timeline overlay of session history (legit)
 ext-session-replay:
     pi -e extensions/session-replay.ts -e extensions/minimal.ts
 
-# 17. Theme cycler: Ctrl+X forward, Ctrl+Q backward, /theme picker
+# 18. Theme cycler: Ctrl+X forward, Ctrl+Q backward, /theme picker
 ext-theme-cycler:
     pi -e extensions/theme-cycler.ts -e extensions/minimal.ts
 
@@ -103,6 +115,7 @@ all:
     just open tool-counter
     just open tool-counter-widget minimal
     just open subagent-widget pure-focus theme-cycler
+    just open plan-mode theme-cycler
     just open tilldone theme-cycler
     just open agent-team theme-cycler
     just open system-select minimal theme-cycler
