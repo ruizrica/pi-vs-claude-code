@@ -13,7 +13,6 @@
  * Commands:
  *   /pipeline            — select pipeline config from YAML
  *   /pipeline-status     — full pipeline state notification
- *   /pipeline-grid N     — set grid columns (1-6)
  *   /pipeline-reset      — reset pipeline to phase 1
  *
  * Usage: pi -e extensions/pipeline-team.ts
@@ -24,7 +23,6 @@ import { Type } from "@sinclair/typebox";
 import {
 	Box, Text, Container, Spacer,
 	matchesKey, Key, truncateToWidth, visibleWidth,
-	type AutocompleteItem,
 } from "@mariozechner/pi-tui";
 import { DynamicBorder } from "@mariozechner/pi-coding-agent";
 import { spawn } from "child_process";
@@ -32,6 +30,7 @@ import { readFileSync, existsSync, readdirSync, mkdirSync, unlinkSync } from "fs
 import { join, resolve, basename, dirname } from "path";
 import { fileURLToPath } from "url";
 import { applyExtensionDefaults } from "./themeMap.ts";
+import { renderVerticalTimeline, renderCollapsedTimeline } from "./pipeline-render.ts";
 
 // ── Types ────────────────────────────────────────
 
@@ -284,8 +283,8 @@ export default function (pi: ExtensionAPI) {
 	let activeConfig: PipelineConfig | null = null;
 	let phaseStates: PhaseState[] = [];
 	let currentPhaseIndex = 0;
-	let gridCols = 3;
 	let widgetCtx: any;
+	let widgetCollapsed = false;
 	let sessionDir = "";
 	let contextWindow = 0;
 
@@ -351,80 +350,6 @@ export default function (pi: ExtensionAPI) {
 		if (activeConfig) activatePipeline(activeConfig);
 	}
 
-	// ── Phase Card Rendering (pipeline progress bar) ──
-
-	function renderPhaseCard(state: PhaseState, colWidth: number, theme: any): string[] {
-		const w = colWidth - 2;
-		const truncate = (s: string, max: number) => s.length > max ? s.slice(0, max - 3) + "..." : s;
-
-		const statusColor = state.status === "pending" ? "dim"
-			: state.status === "active" ? "accent"
-			: state.status === "done" ? "success" : "error";
-		const statusIcon = state.status === "pending" ? "○"
-			: state.status === "active" ? "●"
-			: state.status === "done" ? "✓" : "✗";
-
-		const name = state.def.name.toUpperCase();
-		const nameStr = theme.fg("accent", theme.bold(truncate(name, w)));
-		const nameVisible = Math.min(name.length, w);
-
-		const statusStr = `${statusIcon} ${state.status}`;
-		const statusLine = theme.fg(statusColor, statusStr);
-		const statusVisible = statusStr.length;
-
-		const top = "┌" + "─".repeat(w) + "┐";
-		const bot = "└" + "─".repeat(w) + "┘";
-		const border = (content: string, visLen: number) =>
-			theme.fg("dim", "│") + content + " ".repeat(Math.max(0, w - visLen)) + theme.fg("dim", "│");
-
-		return [
-			theme.fg("dim", top),
-			border(" " + nameStr, 1 + nameVisible),
-			border(" " + statusLine, 1 + statusVisible),
-			theme.fg("dim", bot),
-		];
-	}
-
-	// ── Agent Card Rendering (grid below pipeline bar) ──
-
-	function renderAgentCard(state: AgentState, colWidth: number, theme: any): string[] {
-		const w = colWidth - 2;
-		const truncate = (s: string, max: number) => s.length > max ? s.slice(0, max - 3) + "..." : s;
-
-		const statusColor = state.status === "idle" ? "dim"
-			: state.status === "running" ? "accent"
-			: state.status === "done" ? "success" : "error";
-		const statusIcon = state.status === "idle" ? "○"
-			: state.status === "running" ? "●"
-			: state.status === "done" ? "✓" : "✗";
-
-		const name = `${displayName(state.role)} #${state.index + 1}`;
-		const nameStr = theme.fg("accent", theme.bold(truncate(name, w)));
-		const nameVisible = Math.min(name.length, w);
-
-		const statusStr = `${statusIcon} ${state.status}`;
-		const timeStr = state.status !== "idle" ? ` ${Math.round(state.elapsed / 1000)}s` : "";
-		const statusLine = theme.fg(statusColor, statusStr + timeStr);
-		const statusVisible = statusStr.length + timeStr.length;
-
-		const workRaw = state.lastWork || state.task || "—";
-		const workText = truncate(workRaw, Math.min(50, w - 1));
-		const workLine = theme.fg("muted", workText);
-		const workVisible = workText.length;
-
-		const top = "┌" + "─".repeat(w) + "┐";
-		const bot = "└" + "─".repeat(w) + "┘";
-		const border = (content: string, visLen: number) =>
-			theme.fg("dim", "│") + content + " ".repeat(Math.max(0, w - visLen)) + theme.fg("dim", "│");
-
-		return [
-			theme.fg("dim", top),
-			border(" " + nameStr, 1 + nameVisible),
-			border(" " + statusLine, 1 + statusVisible),
-			border(" " + workLine, 1 + workVisible),
-			theme.fg("dim", bot),
-		];
-	}
 
 	// ── Widget ───────────────────────────────────
 
@@ -441,53 +366,23 @@ export default function (pi: ExtensionAPI) {
 						return text.render(width);
 					}
 
-					const outputLines: string[] = [];
+					const renderPhases = phaseStates.map(s => ({
+						name: s.def.name,
+						status: s.status,
+						summary: s.summary,
+						agents: s.agents.map(a => ({
+							role: a.role,
+							index: a.index,
+							status: a.status,
+							lastWork: a.lastWork,
+							task: a.task,
+							elapsed: a.elapsed,
+						})),
+					}));
 
-					// ── Top: Pipeline progress bar ──
-					const arrowWidth = 5; // " ──▶ "
-					const phaseCols = phaseStates.length;
-					const totalArrowWidth = arrowWidth * (phaseCols - 1);
-					const phaseColWidth = Math.max(12, Math.floor((width - totalArrowWidth) / phaseCols));
-					const phaseCards = phaseStates.map(s => renderPhaseCard(s, phaseColWidth, theme));
-					const phaseCardHeight = phaseCards[0].length;
-					const arrowRow = 1; // middle of 4-line card
-
-					for (let line = 0; line < phaseCardHeight; line++) {
-						let row = phaseCards[0][line];
-						for (let c = 1; c < phaseCols; c++) {
-							if (line === arrowRow) {
-								row += theme.fg("dim", " ──▶ ");
-							} else {
-								row += " ".repeat(arrowWidth);
-							}
-							row += phaseCards[c][line];
-						}
-						outputLines.push(row);
-					}
-
-					// ── Bottom: Agent grid (only if current phase has agents) ──
-					const currentAgents = phaseStates[currentPhaseIndex]?.agents || [];
-					if (currentAgents.length > 0) {
-						outputLines.push(""); // spacer
-
-						const cols = Math.min(gridCols, currentAgents.length);
-						const gap = 1;
-						const colWidth = Math.floor((width - gap * (cols - 1)) / cols);
-
-						for (let i = 0; i < currentAgents.length; i += cols) {
-							const rowAgents = currentAgents.slice(i, i + cols);
-							const cards = rowAgents.map(a => renderAgentCard(a, colWidth, theme));
-
-							while (cards.length < cols) {
-								cards.push(Array(5).fill(" ".repeat(colWidth)));
-							}
-
-							const cardHeight = cards[0].length;
-							for (let line = 0; line < cardHeight; line++) {
-								outputLines.push(cards.map(card => card[line] || "").join(" ".repeat(gap)));
-							}
-						}
-					}
+					const outputLines = widgetCollapsed
+						? renderCollapsedTimeline(renderPhases, currentPhaseIndex, activeConfig.name, width, theme)
+						: renderVerticalTimeline(renderPhases, currentPhaseIndex, width, theme);
 
 					text.setText(outputLines.join("\n"));
 					return text.render(width);
@@ -1077,28 +972,6 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
-	pi.registerCommand("pipeline-grid", {
-		description: "Set grid columns: /pipeline-grid <1-6>",
-		getArgumentCompletions: (prefix: string): AutocompleteItem[] | null => {
-			const items = ["1", "2", "3", "4", "5", "6"].map(n => ({
-				value: n,
-				label: `${n} columns`,
-			}));
-			const filtered = items.filter(i => i.value.startsWith(prefix));
-			return filtered.length > 0 ? filtered : items;
-		},
-		handler: async (args, ctx) => {
-			widgetCtx = ctx;
-			const n = parseInt(args?.trim() || "", 10);
-			if (n >= 1 && n <= 6) {
-				gridCols = n;
-				ctx.ui.notify(`Grid set to ${gridCols} columns`, "info");
-				updateWidget();
-			} else {
-				ctx.ui.notify("Usage: /pipeline-grid <1-6>", "error");
-			}
-		},
-	});
 
 	pi.registerCommand("pipeline-reset", {
 		description: "Reset pipeline to phase 1",
@@ -1132,6 +1005,17 @@ export default function (pi: ExtensionAPI) {
 				overlay: true,
 				overlayOptions: { width: "80%", anchor: "center" },
 			});
+		},
+	});
+
+	// ── Ctrl+B Shortcut ─────────────────────────
+
+	pi.registerShortcut("ctrl+b", {
+		description: "Toggle pipeline widget collapse/expand",
+		handler: async (ctx) => {
+			widgetCtx = ctx;
+			widgetCollapsed = !widgetCollapsed;
+			updateWidget();
 		},
 	});
 
@@ -1277,9 +1161,9 @@ ${contextSummary}${planSection}${reviewSection}
 			`Phase 1: ${phaseStates[0]?.def.description || "UNDERSTAND"}\n\n` +
 			`/pipeline            Select pipeline config\n` +
 			`/pipeline-status     Full pipeline state\n` +
-			`/pipeline-grid N     Set grid columns (1-6)\n` +
 			`/pipeline-reset      Reset to phase 1\n` +
-			`Ctrl+J               Inspect agent output`,
+			`Ctrl+B               Toggle widget\n` +
+		`Ctrl+J               Inspect agent output`,
 			"info",
 		);
 
