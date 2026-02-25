@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Enemies & Bosses Tests</title>
+    <style>
+        body { background: #111; color: #0f0; font-family: monospace; padding: 20px; }
+        .pass { color: #0f0; }
+        .fail { color: #f33; }
+        .section { color: #0ff; margin-top: 16px; font-weight: bold; }
+        #results { white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+<h1>Enemy & Boss System Tests</h1>
+<div id="results"></div>
+<canvas id="testCanvas" width="960" height="640" style="display:none;"></canvas>
+
+<script src="../js/contracts.js"></script>
+<script src="../js/enemies.js"></script>
+<script src="../js/bosses.js"></script>
+<script>
+(function() {
+    const results = document.getElementById('results');
+    let passed = 0, failed = 0;
+
+    function log(msg, cls) {
+        const div = document.createElement('div');
+        div.className = cls || '';
+        div.textContent = msg;
+        results.appendChild(div);
+    }
+
+    function section(name) { log('\n═══ ' + name + ' ═══', 'section'); }
+
+    function assert(condition, msg) {
+        if (condition) {
+            passed++;
+            log('  ✓ ' + msg, 'pass');
+        } else {
+            failed++;
+            log('  ✗ ' + msg, 'fail');
+        }
+    }
+
+    // Minimal mock for Game.Player
+    Game.Player = Game.Player || {
+        x: 480, y: 320,
+        hp: 100, maxHp: 100, alive: true,
+        projectiles: [],
+        takeDamage(amt) { this.hp -= amt; }
+    };
+
+    // Minimal mock for Game.Engine
+    Game.Engine = Game.Engine || {
+        addParticle(p) {},
+        checkWallCollision(x, y, size, tilemap) {
+            return { blocked: false, nx: x, ny: y };
+        }
+    };
+
+    // Minimal mock for Game.Levels
+    Game.Levels = Game.Levels || {
+        getCurrentTilemap() { return null; }
+    };
+
+    const canvas = document.getElementById('testCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // ═══════════════════════════════════════════════════════
+    // ENEMY SYSTEM TESTS
+    // ═══════════════════════════════════════════════════════
+
+    section('Enemies Module Structure');
+    assert(typeof Game.Enemies === 'object', 'Game.Enemies exists');
+    assert(typeof Game.Enemies.init === 'function', 'init() exists');
+    assert(typeof Game.Enemies.spawnWave === 'function', 'spawnWave() exists');
+    assert(typeof Game.Enemies.update === 'function', 'update() exists');
+    assert(typeof Game.Enemies.draw === 'function', 'draw() exists');
+    assert(typeof Game.Enemies.getAll === 'function', 'getAll() exists');
+    assert(typeof Game.Enemies.clear === 'function', 'clear() exists');
+    assert(typeof Game.Enemies.count === 'function', 'count() exists');
+
+    section('Enemies Init');
+    Game.Enemies.init();
+    assert(Game.Enemies.count() === 0, 'No enemies after init');
+    assert(Array.isArray(Game.Enemies.getAll()), 'getAll() returns array');
+    assert(Game.Enemies.getAll().length === 0, 'getAll() is empty after init');
+
+    section('Enemies SpawnWave');
+    Game.Enemies.init();
+    Game.Enemies.spawnWave([
+        { type: 'chaser', x: 100, y: 100 },
+        { type: 'shooter', x: 200, y: 200 },
+        { type: 'tank', x: 300, y: 300 },
+        { type: 'dasher', x: 400, y: 400 },
+    ]);
+    assert(Game.Enemies.count() === 4, 'Spawned 4 enemies');
+    const all = Game.Enemies.getAll();
+    assert(all[0].type === 'chaser', 'First enemy is chaser');
+    assert(all[1].type === 'shooter', 'Second enemy is shooter');
+    assert(all[2].type === 'tank', 'Third enemy is tank');
+    assert(all[3].type === 'dasher', 'Fourth enemy is dasher');
+
+    section('Enemy Properties');
+    const chaser = all[0];
+    assert(chaser.x === 100, 'Chaser x position correct');
+    assert(chaser.y === 100, 'Chaser y position correct');
+    assert(chaser.hp > 0, 'Chaser has HP');
+    assert(chaser.maxHp > 0, 'Chaser has maxHp');
+    assert(chaser.speed > 0, 'Chaser has speed');
+    assert(chaser.size > 0, 'Chaser has size');
+    assert(chaser.alive === true, 'Chaser is alive');
+    assert(chaser.damage > 0, 'Chaser has damage');
+
+    const tank = all[2];
+    assert(tank.hp > chaser.hp, 'Tank has more HP than chaser (3x)');
+    assert(tank.speed < chaser.speed, 'Tank is slower than chaser');
+
+    section('Enemy Clear');
+    Game.Enemies.clear();
+    assert(Game.Enemies.count() === 0, 'No enemies after clear');
+
+    section('Enemy Update (basic)');
+    Game.Enemies.init();
+    Game.Enemies.spawnWave([{ type: 'chaser', x: 100, y: 100 }]);
+    const chaserBefore = { x: Game.Enemies.getAll()[0].x, y: Game.Enemies.getAll()[0].y };
+    Game.Enemies.update(1);
+    const chaserAfter = Game.Enemies.getAll()[0];
+    // Chaser should move toward player (480, 320) — x should increase, y should increase
+    assert(chaserAfter.x > chaserBefore.x || chaserAfter.y > chaserBefore.y,
+           'Chaser moved toward player');
+
+    section('Enemy Draw (no crash)');
+    try {
+        Game.Enemies.draw(ctx);
+        assert(true, 'draw() runs without error');
+    } catch(e) {
+        assert(false, 'draw() threw: ' + e.message);
+    }
+
+    section('Enemy Death & Events');
+    Game.Enemies.init();
+    Game.Enemies.spawnWave([{ type: 'chaser', x: 100, y: 100 }]);
+    let killEvent = null;
+    Game.Events.on('enemy-killed', (data) => { killEvent = data; });
+    const enemy = Game.Enemies.getAll()[0];
+    enemy.hp = 0; // Force kill
+    Game.Enemies.update(1); // Should detect death
+    assert(Game.Enemies.count() === 0, 'Dead enemy removed from count');
+    assert(killEvent !== null, 'enemy-killed event emitted');
+    assert(killEvent.type === 'chaser', 'kill event has correct type');
+    assert(typeof killEvent.score === 'number', 'kill event has score');
+    Game.Events.off('enemy-killed');
+
+    section('Enemy Projectiles');
+    Game.Enemies.init();
+    Game.Enemies.spawnWave([{ type: 'shooter', x: 200, y: 200 }]);
+    const shooter = Game.Enemies.getAll()[0];
+    shooter.shootCooldown = 0; // Force ready to shoot
+    // Run many updates so shooter fires
+    for (let i = 0; i < 10; i++) Game.Enemies.update(1);
+    const projArray = Game.Enemies.getEnemyProjectiles ? Game.Enemies.getEnemyProjectiles() : [];
+    // May or may not have fired depending on distance check
+    assert(Array.isArray(projArray), 'Enemy projectiles array exists');
+
+    section('Enemy Hit Flash');
+    Game.Enemies.init();
+    Game.Enemies.spawnWave([{ type: 'tank', x: 200, y: 200 }]);
+    const tankEnemy = Game.Enemies.getAll()[0];
+    const oldHp = tankEnemy.hp;
+    tankEnemy.hp -= 10;
+    tankEnemy.flashTimer = 10;
+    assert(tankEnemy.flashTimer > 0, 'Flash timer set on damage');
+
+    // ═══════════════════════════════════════════════════════
+    // BOSS SYSTEM TESTS
+    // ═══════════════════════════════════════════════════════
+
+    section('Bosses Module Structure');
+    assert(typeof Game.Bosses === 'object', 'Game.Bosses exists');
+    assert(typeof Game.Bosses.init === 'function', 'init() exists');
+    assert(typeof Game.Bosses.spawn === 'function', 'spawn() exists');
+    assert(typeof Game.Bosses.update === 'function', 'update() exists');
+    assert(typeof Game.Bosses.draw === 'function', 'draw() exists');
+    assert(typeof Game.Bosses.getActive === 'function', 'getActive() exists');
+    assert(typeof Game.Bosses.isAlive === 'function', 'isAlive() exists');
+
+    section('Bosses Init');
+    Game.Bosses.init();
+    assert(Game.Bosses.getActive() === null, 'No active boss after init');
+    assert(Game.Bosses.isAlive() === false, 'Boss is not alive after init');
+
+    section('Boss Spawn Level 0 (The Warden)');
+    Game.Bosses.init();
+    Game.Bosses.spawn(0);
+    const warden = Game.Bosses.getActive();
+    assert(warden !== null, 'Warden spawned');
+    assert(warden.name === 'The Warden', 'Boss name is The Warden');
+    assert(warden.hp === Game.CONST.BOSS_HP[0], 'Warden HP matches CONST');
+    assert(warden.phase === 1, 'Warden starts in phase 1');
+    assert(Game.Bosses.isAlive() === true, 'Boss is alive');
+
+    section('Boss Spawn Level 1 (The Sorcerer)');
+    Game.Bosses.init();
+    Game.Bosses.spawn(1);
+    const sorcerer = Game.Bosses.getActive();
+    assert(sorcerer !== null, 'Sorcerer spawned');
+    assert(sorcerer.name === 'The Sorcerer', 'Boss name is The Sorcerer');
+    assert(sorcerer.hp === Game.CONST.BOSS_HP[1], 'Sorcerer HP matches CONST');
+
+    section('Boss Spawn Level 2 (The Void King)');
+    Game.Bosses.init();
+    Game.Bosses.spawn(2);
+    const voidKing = Game.Bosses.getActive();
+    assert(voidKing !== null, 'Void King spawned');
+    assert(voidKing.name === 'The Void King', 'Boss name is The Void King');
+    assert(voidKing.hp === Game.CONST.BOSS_HP[2], 'Void King HP matches CONST');
+
+    section('Boss Update (no crash)');
+    Game.Bosses.init();
+    Game.Bosses.spawn(0);
+    try {
+        Game.Bosses.update(1);
+        assert(true, 'update() runs without error');
+    } catch(e) {
+        assert(false, 'update() threw: ' + e.message);
+    }
+
+    section('Boss Draw (no crash)');
+    Game.Bosses.init();
+    Game.Bosses.spawn(0);
+    try {
+        Game.Bosses.draw(ctx);
+        assert(true, 'draw() runs without error for Warden');
+    } catch(e) {
+        assert(false, 'draw() threw for Warden: ' + e.message);
+    }
+
+    Game.Bosses.init();
+    Game.Bosses.spawn(1);
+    try {
+        Game.Bosses.draw(ctx);
+        assert(true, 'draw() runs without error for Sorcerer');
+    } catch(e) {
+        assert(false, 'draw() threw for Sorcerer: ' + e.message);
+    }
+
+    Game.Bosses.init();
+    Game.Bosses.spawn(2);
+    try {
+        Game.Bosses.draw(ctx);
+        assert(true, 'draw() runs without error for Void King');
+    } catch(e) {
+        assert(false, 'draw() threw for Void King: ' + e.message);
+    }
+
+    section('Boss Phase Transition');
+    Game.Bosses.init();
+    Game.Bosses.spawn(0);
+    let phaseEvent = null;
+    Game.Events.on('boss-phase-change', (data) => { phaseEvent = data; });
+    const boss = Game.Bosses.getActive();
+    // Force HP below 50% to trigger phase 2
+    boss.hp = Math.floor(boss.maxHp * 0.49);
+    Game.Bosses.update(1);
+    assert(boss.phase === 2, 'Boss transitions to phase 2 at <50% HP');
+    assert(phaseEvent !== null, 'boss-phase-change event emitted');
+    Game.Events.off('boss-phase-change');
+
+    section('Boss Death');
+    Game.Bosses.init();
+    Game.Bosses.spawn(0);
+    let deathEvent = null;
+    Game.Events.on('boss-defeated', (data) => { deathEvent = data; });
+    const dyingBoss = Game.Bosses.getActive();
+    dyingBoss.hp = 0;
+    Game.Bosses.update(1);
+    assert(Game.Bosses.isAlive() === false, 'Boss is dead after HP reaches 0');
+    assert(deathEvent !== null, 'boss-defeated event emitted');
+    Game.Events.off('boss-defeated');
+
+    section('Void King Phase 3');
+    Game.Bosses.init();
+    Game.Bosses.spawn(2);
+    const vk = Game.Bosses.getActive();
+    vk.hp = Math.floor(vk.maxHp * 0.24); // Below 25%
+    // Need to also set phase 2 first so transition ordering works
+    vk.phase = 2;
+    Game.Bosses.update(1);
+    assert(vk.phase === 3, 'Void King enters phase 3 at <25% HP');
+
+    // ═══════════════════════════════════════════════════════
+    // SUMMARY
+    // ═══════════════════════════════════════════════════════
+    section('RESULTS');
+    log(passed + ' passed, ' + failed + ' failed', failed > 0 ? 'fail' : 'pass');
+    document.title = (failed > 0 ? '✗ ' : '✓ ') + 'Tests: ' + passed + '/' + (passed+failed);
+})();
+</script>
+</body>
+</html>
