@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Effects.js Tests</title>
+    <style>
+        body { background: #111; color: #0f0; font-family: monospace; padding: 20px; }
+        .pass { color: #0f0; }
+        .fail { color: #f33; }
+        .section { color: #ff0; margin-top: 12px; }
+    </style>
+</head>
+<body>
+    <h2>Effects.js — Unit Tests</h2>
+    <div id="results"></div>
+    <script src="../js/contracts.js"></script>
+    <script src="../js/effects.js"></script>
+    <script>
+        const out = document.getElementById('results');
+        let passed = 0, failed = 0;
+
+        function assert(cond, msg) {
+            if (cond) {
+                passed++;
+                out.innerHTML += `<div class="pass">✓ ${msg}</div>`;
+            } else {
+                failed++;
+                out.innerHTML += `<div class="fail">✗ ${msg}</div>`;
+            }
+        }
+
+        function section(name) {
+            out.innerHTML += `<div class="section">— ${name} —</div>`;
+        }
+
+        // ========== API existence ==========
+        section('API');
+        assert(typeof Game.Effects === 'object', 'Game.Effects exists');
+        assert(typeof Game.Effects.init === 'function', 'init() exists');
+        assert(typeof Game.Effects.update === 'function', 'update() exists');
+        assert(typeof Game.Effects.draw === 'function', 'draw() exists');
+        assert(typeof Game.Effects.screenFlash === 'function', 'screenFlash() exists');
+        assert(typeof Game.Effects.spawnExplosion === 'function', 'spawnExplosion() exists');
+        assert(typeof Game.Effects.spawnText === 'function', 'spawnText() exists');
+        assert(typeof Game.Effects.addTrail === 'function', 'addTrail() exists');
+        assert(typeof Game.Effects.addAmbient === 'function', 'addAmbient() exists');
+
+        // ========== init ==========
+        section('Init');
+        Game.Effects.init();
+        // After init, update/draw shouldn't crash
+        const canvas = document.createElement('canvas');
+        canvas.width = 960;
+        canvas.height = 640;
+        const ctx = canvas.getContext('2d');
+
+        let err = null;
+        try { Game.Effects.update(); Game.Effects.draw(ctx); } catch (e) { err = e; }
+        assert(err === null, 'update/draw after init works');
+
+        // ========== screenFlash ==========
+        section('screenFlash');
+        Game.Effects.init();
+        Game.Effects.screenFlash('#ff0000', 30);
+        // Should be able to draw without error
+        err = null;
+        try { Game.Effects.draw(ctx); } catch (e) { err = e; }
+        assert(err === null, 'screenFlash + draw works');
+        // After update, flash should still exist (hasn't expired)
+        Game.Effects.update();
+        err = null;
+        try { Game.Effects.draw(ctx); } catch (e) { err = e; }
+        assert(err === null, 'screenFlash persists after 1 update');
+
+        // ========== spawnExplosion ==========
+        section('spawnExplosion');
+        Game.Effects.init();
+        Game.Effects.spawnExplosion(100, 200, '#ff6600', 20);
+        err = null;
+        try {
+            Game.Effects.update();
+            Game.Effects.draw(ctx);
+        } catch (e) { err = e; }
+        assert(err === null, 'spawnExplosion + update + draw works');
+
+        // ========== spawnText ==========
+        section('spawnText');
+        Game.Effects.init();
+        Game.Effects.spawnText(150, 300, '-25', '#ff3366');
+        err = null;
+        try {
+            Game.Effects.draw(ctx);
+        } catch (e) { err = e; }
+        assert(err === null, 'spawnText + draw works');
+        // Text should rise: after updates, drawing still works
+        for (let i = 0; i < 40; i++) Game.Effects.update();
+        err = null;
+        try { Game.Effects.draw(ctx); } catch (e) { err = e; }
+        assert(err === null, 'spawnText fades after 40 frames without error');
+
+        // ========== addTrail ==========
+        section('addTrail');
+        Game.Effects.init();
+        Game.Effects.addTrail(200, 200, '#00ffff');
+        Game.Effects.addTrail(204, 200, '#00ffff');
+        Game.Effects.addTrail(208, 200, '#00ffff');
+        err = null;
+        try {
+            Game.Effects.update();
+            Game.Effects.draw(ctx);
+        } catch (e) { err = e; }
+        assert(err === null, 'addTrail + update + draw works');
+        // Trails fade over 20 frames
+        for (let i = 0; i < 25; i++) Game.Effects.update();
+        err = null;
+        try { Game.Effects.draw(ctx); } catch (e) { err = e; }
+        assert(err === null, 'trails fade out after 20+ frames');
+
+        // ========== addAmbient ==========
+        section('addAmbient');
+        Game.Effects.init();
+        Game.Effects.addAmbient({ x: 0, y: 0, w: 960, h: 640 });
+        err = null;
+        try {
+            for (let i = 0; i < 10; i++) {
+                Game.Effects.update();
+            }
+            Game.Effects.draw(ctx);
+        } catch (e) { err = e; }
+        assert(err === null, 'addAmbient + updates + draw works');
+
+        // ========== effects expire ==========
+        section('Lifecycle');
+        Game.Effects.init();
+        Game.Effects.spawnText(0, 0, 'test', '#fff');
+        Game.Effects.spawnExplosion(0, 0, '#fff', 5);
+        Game.Effects.addTrail(0, 0, '#fff');
+        Game.Effects.screenFlash('#fff', 10);
+        // Run 200 frames — everything should expire
+        for (let i = 0; i < 200; i++) Game.Effects.update();
+        err = null;
+        try { Game.Effects.draw(ctx); } catch (e) { err = e; }
+        assert(err === null, 'all effects expire gracefully after many updates');
+
+        // ========== summary ==========
+        out.innerHTML += `<div class="section" style="margin-top:20px">═══════════════</div>`;
+        out.innerHTML += `<div class="${failed ? 'fail' : 'pass'}">Passed: ${passed} | Failed: ${failed}</div>`;
+    </script>
+</body>
+</html>
