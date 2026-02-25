@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "description": "Pi Coding Agent extension playground",
+  "scripts": {
+    "check:readme": "bun run scripts/check-readme.mjs"
+  },
   "dependencies": {
     "yaml": "^2.8.0"
   }

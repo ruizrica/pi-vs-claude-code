@@ -1,0 +1,56 @@
+# Simple Feature Pipeline
+# Lightweight pipeline for small, focused changes
+
+name: simple-feature
+description: "Lightweight pipeline for simple feature additions"
+review_max_loops: 2
+
+phases:
+  - name: understand
+    description: "Quick clarification"
+    mode: interactive
+    agents: []
+
+  - name: gather
+    description: "Quick codebase check"
+    mode: parallel
+    agents:
+      - role: scout
+        task_template: |
+          Quick check for: $TASK
+
+          Context:
+          $CONTEXT
+
+          Just find the most relevant files and patterns.
+
+  - name: plan
+    description: "Simple implementation plan"
+    mode: sequential
+    agents:
+      - role: planner
+        task_template: |
+          Simple plan for: $TASK
+
+          Keep it brief - just the essential steps.
+
+  - name: execute
+    description: "Implement"
+    mode: parallel
+    agents:
+      - role: builder
+        task_template: |
+          Implement:
+          $PLAN
+
+  - name: review
+    description: "Quick review"
+    mode: sequential
+    max_iterations: 2
+    agents:
+      - role: reviewer
+        task_template: |
+          Quick review:
+          $EXECUTE_OUTPUT
+
+          APPROVED or issues?

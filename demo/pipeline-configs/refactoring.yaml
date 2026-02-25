@@ -1,0 +1,92 @@
+# Refactoring Pipeline
+# Specialized pipeline for code refactoring tasks
+
+name: refactoring
+description: "Pipeline focused on safe code refactoring"
+review_max_loops: 3
+
+phases:
+  - name: understand
+    description: "Understand refactoring goals"
+    mode: interactive
+    agents: []
+
+  - name: gather
+    description: "Analyze code to refactor"
+    mode: parallel
+    agents:
+      - role: scout
+        task_template: |
+          Analyze code structure for refactoring: $TASK
+
+          Context:
+          $CONTEXT
+
+          Find:
+          1. The specific code to refactor
+          2. All usage sites
+          3. Potential risks and dependencies
+      - role: scout
+        task_template: |
+          Find test coverage for: $TASK
+
+          Context:
+          $CONTEXT
+
+          Report:
+          1. Existing tests for the code
+          2. Testing patterns used
+          3. What tests might break
+
+  - name: plan
+    description: "Create refactoring plan with safety measures"
+    mode: sequential
+    agents:
+      - role: planner
+        task_template: |
+          Plan safe refactoring for: $TASK
+
+          Context:
+          $CONTEXT
+
+          Create plan that:
+          1. Minimizes risk
+          2. Maintains backward compatibility
+          3. Includes test verification steps
+          4. Has rollback plan
+
+  - name: execute
+    description: "Execute refactoring in stages"
+    mode: parallel
+    agents:
+      - role: builder
+        task_template: |
+          Refactor according to plan:
+
+          $PLAN
+
+          Context:
+          $CONTEXT
+
+          Be careful to maintain API compatibility.
+
+  - name: review
+    description: "Thorough review of refactored code"
+    mode: sequential
+    max_iterations: 3
+    agents:
+      - role: reviewer
+        task_template: |
+          Review refactoring: $TASK
+
+          Plan:
+          $PLAN
+
+          Implementation:
+          $EXECUTE_OUTPUT
+
+          Check for:
+          1. API compatibility maintained
+          2. No regressions introduced
+          3. Tests still pass
+          4. Code quality improved

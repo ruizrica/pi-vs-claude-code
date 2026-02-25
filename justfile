@@ -9,6 +9,9 @@ default:
 pi:
     pi
 
+dev:
+    pi -e extensions/subagent-widget.ts -e extensions/tilldone.ts -e extensions/pipeline-team.ts -e extensions/user-question.ts -e extensions/system-select.ts -e ui/footer.ts
+
 # 2. Pure focus pi: strip footer and status line entirely
 ext-pure-focus:
     pi -e extensions/pure-focus.ts
@@ -83,6 +86,10 @@ ext-pipeline-team:
 ext-footer:
 	pi -e ui/footer.ts
 
+# 20. User Question: ask_user tool with split-panel select, input, and confirm modes
+ext-user-question:
+    pi -e extensions/user-question.ts -e ui/footer.ts
+
 # 17. Session Replay: scrollable timeline overlay of session history (legit)
 ext-session-replay:
     pi -e extensions/session-replay.ts -e extensions/minimal.ts
@@ -92,6 +99,10 @@ ext-theme-cycler:
     pi -e extensions/theme-cycler.ts -e extensions/minimal.ts
 
 # utils
+
+# Run a lightweight README.md sanity check
+check-readme:
+    bun run scripts/check-readme.mjs
 
 # Open pi with one or more stacked extensions in a new terminal: just open minimal tool-counter
 open +exts:

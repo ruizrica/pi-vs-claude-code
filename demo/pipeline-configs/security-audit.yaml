@@ -1,0 +1,99 @@
+# Security Audit Pipeline
+# Pipeline for security-focused reviews
+
+name: security-audit
+description: "Focused security review pipeline"
+review_max_loops: 3
+
+phases:
+  - name: understand
+    description: "Clarify security concerns"
+    mode: interactive
+    agents: []
+
+  - name: gather
+    description: "Gather security context"
+    mode: parallel
+    agents:
+      - role: scout
+        task_template: |
+          Find security-relevant code for: $TASK
+
+          Context:
+          $CONTEXT
+
+          Focus on:
+          1. Input handling
+          2. Authentication/authorization
+          3. Data handling
+          4. External API calls
+      - role: red-team
+        task_template: |
+          Identify potential security vulnerabilities for: $TASK
+
+          Context:
+          $CONTEXT
+
+          Look for:
+          1. SQL injection vectors
+          2. XSS vulnerabilities
+          3. Command injection
+          4. Sensitive data exposure
+          5. Authentication bypasses
+
+  - name: plan
+    description: "Create security remediation plan"
+    mode: sequential
+    agents:
+      - role: planner
+        task_template: |
+          Plan security fixes for: $TASK
+
+          Context:
+          $CONTEXT
+
+          Findings:
+          $SCOUT_OUTPUT
+
+          Prioritize:
+          1. Critical vulnerabilities first
+          2. Provide specific fixes
+          3. Include security best practices
+
+  - name: execute
+    description: "Implement security fixes"
+    mode: parallel
+    agents:
+      - role: builder
+        task_template: |
+          Implement security fixes:
+
+          $PLAN
+
+          Context:
+          $CONTEXT
+
+          Focus on:
+          1. Input validation
+          2. Output encoding
+          3. Authentication hardening
+
+  - name: review
+    description: "Security-focused review"
+    mode: sequential
+    max_iterations: 3
+    agents:
+      - role: reviewer
+        task_template: |
+          Security review for: $TASK
+
+          Plan:
+          $PLAN
+
+          Implementation:
+          $EXECUTE_OUTPUT
+
+          Verify:
+          1. All vulnerabilities fixed
+          2. No new issues introduced
+          3. Security best practices followed

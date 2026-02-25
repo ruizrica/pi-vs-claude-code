@@ -38,6 +38,7 @@ export const THEME_MAP: Record<string, string> = {
 	"tool-counter":       "monochrome-blue",
 	"tool-counter-widget":"monochrome-blue",
 	"footer":             "monochrome-blue",
+	"user-question":      "monochrome-blue",
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────

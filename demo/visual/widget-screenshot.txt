@@ -1,0 +1,75 @@
+PIPELINE WIDGET EXAMPLE
+═══════════════════════
+
+┌─ PIPELINE: demo-feature ─────────────────────────────────────────────────┐
+│                                                                            │
+│   Current Phase: EXECUTE                                                  │
+│                                                                            │
+│   ─────────────────────────────────────────────────────────────────────   │
+│                                                                            │
+│   PHASE PROGRESS                                                          │
+│   ─────────────────────────────────────────────────────────────────────   │
+│                                                                            │
+│   ✓ UNDERSTAND    Add dark theme toggle extension                         │
+│   ✓ GATHER        Exploring codebase...                                   │
+│   ✓ PLAN          Implementation plan created                             │
+│   ○ EXECUTE       Building feature...                                     │
+│     └─ Builder: [██████████████████░░░░░░░░░] 78%                        │
+│   ○ REVIEW        (Waiting)                                               │
+│                                                                            │
+│   ─────────────────────────────────────────────────────────────────────   │
+│                                                                            │
+│   CONTEXT PREVIEW                                                         │
+│   ─────────────────────────────────────────────────────────────────────   │
+│   $TASK: Add dark theme toggle extension                                  │
+│   $CONTEXT: Global toggle, Ctrl+T cycles all themes, persist, notify     │
+│                                                                            │
+│   ─────────────────────────────────────────────────────────────────────   │
+│                                                                            │
+│   AGENT STATUS                                                            │
+│   ─────────────────────────────────────────────────────────────────────   │
+│                                                                            │
+│   ┌─────────────┐  ┌─────────────┐                                       │
+│   │  BUILDER    │  │             │                                       │
+│   │  Running    │  │             │                                       │
+│   │  ████████░  │  │             │                                       │
+│   │  78%        │  │             │                                       │
+│   │  2m 35s     │  │             │                                       │
+│   └─────────────┘  └─────────────┘                                       │
+│                                                                            │
+│   Context: ████████████░░░░░░░░░░░░ 45%                                   │
+│                                                                            │
+│   ─────────────────────────────────────────────────────────────────────   │
+│                                                                            │
+│   Commands: advance_phase | /pipeline-status | Ctrl+J                     │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+
+
+WIDGET STATES
+═════════════
+
+When PHASE is PENDING:
+  ○ PHASE NAME
+
+When PHASE is RUNNING:
+  ○ PHASE NAME
+    └─ Agent: [████████████░░░░░░░░░] XX%
+
+When PHASE is COMPLETE:
+  ✓ PHASE NAME
+    └─ Summary of what happened
+
+
+TOGGLE WIDGET
+═════════════
+
+Press Ctrl+J to toggle between:
+- Compact view (above)
+- Expanded view (shows all agent outputs)
+
+In expanded view, you can see:
+- Each agent's stdout/stderr in real-time
+- Token usage per agent
+- Agent session IDs
+- Full context variables

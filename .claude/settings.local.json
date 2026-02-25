@@ -4,7 +4,12 @@
       "Bash(bun run:*)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(gh api:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(grep:*)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(just:*)"
     ]
   }
 }

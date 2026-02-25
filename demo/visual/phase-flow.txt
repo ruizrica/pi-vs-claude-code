@@ -1,0 +1,62 @@
+┌─────────────────────────────────────────────────────────────────┐
+│                    PIPELINE FLOW                                │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐        │
+│   │ UNDERSTAND  │───▶│   GATHER    │───▶│    PLAN     │        │
+│   │ (Interactive│    │  (Parallel) │    │(Sequential) │        │
+│   └─────────────┘    └─────────────┘    └─────────────┘        │
+│         │                                           │           │
+│         │                User clarifies task         │           │
+│         ▼                                           ▼           │
+│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐        │
+│   │   GATHER    │◀───│    PLAN     │◀───│   EXECUTE   │        │
+│   │  (Parallel) │    │(Sequential) │    │  (Parallel) │        │
+│   └─────────────┘    └─────────────┘    └─────────────┘        │
+│         │                                           │           │
+│         ▼                                           ▼           │
+│   ┌─────────────────────────────────────────────────────┐       │
+│   │                      REVIEW                         │       │
+│   │            (Loop up to 3 times)                     │       │
+│   └─────────────────────────────────────────────────────┘       │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+
+PHASE MODES
+═══════════
+
+UNDERSTAND:  Interactive (user conversation)
+GATHER:      Parallel   (multiple scouts simultaneously)
+PLAN:        Sequential (one planner after gather)
+EXECUTE:     Parallel   (multiple builders simultaneously)
+REVIEW:      Sequential (reviewer after execute, loops 3x max)
+
+
+CONTEXT FLOW
+════════════
+
+$TASK ──────────────────────────────────────────────────────▶
+     │                                                       │
+     ▼                                                       │
+$CONTEXT ──────────────────────────────────────────────────▶
+     │                                                       │
+     ▼                                                       │
+$SCOUT_OUTPUT ──────────────────▶ $PLAN ──────────────────▶
+                                   │                        │
+                                   ▼                        │
+                              $EXECUTE_OUTPUT ─────────────▶
+                                                     │
+                                                     ▼
+                                                $REVIEW_OUTPUT
+
+
+KEY VARIABLES
+═════════════
+
+$TASK              The user's original request
+$CONTEXT           Accumulated context (user answers, clarifications)
+$SCOUT_OUTPUT      Results from GATHER phase scouts
+$PLAN              Implementation plan from PLANNER
+$EXECUTE_OUTPUT    Implementation results from BUILDERS
+$REVIEW_OUTPUT     Reviewer feedback and status

@@ -1,0 +1,100 @@
+# Demo Pipeline Configuration
+# This is the main demo pipeline for the pi-vs-claude-code project
+
+name: demo-feature
+description: "Demo pipeline showcasing all 5 phases with the pi-vs-claude-code project"
+review_max_loops: 3
+
+phases:
+  - name: understand
+    description: "Clarify the feature request with interactive questions"
+    mode: interactive
+    agents: []
+
+  - name: gather
+    description: "Explore codebase for context"
+    mode: parallel
+    agents:
+      - role: scout
+        task_template: |
+          Explore the project structure for: $TASK
+
+          Context:
+          $CONTEXT
+
+          Report back:
+          1. Relevant directories and files
+          2. Technology stack used
+          3. Existing patterns that could apply
+      - role: scout
+        task_template: |
+          Find existing patterns for: $TASK
+
+          Context:
+          $CONTEXT
+
+          Report back:
+          1. Similar features already implemented
+          2. Code patterns to follow
+          3. Potential conflicts or considerations
+
+  - name: plan
+    description: "Create implementation plan"
+    mode: sequential
+    agents:
+      - role: planner
+        task_template: |
+          Plan implementation for: $TASK
+
+          Context:
+          $CONTEXT
+
+          Scout findings:
+          $SCOUT_OUTPUT
+
+          Create a detailed plan with:
+          1. Step-by-step implementation steps
+          2. Files to modify/create
+          3. Dependencies and considerations
+          4. Risk assessment
+
+  - name: execute
+    description: "Implement the feature"
+    mode: parallel
+    agents:
+      - role: builder
+        task_template: |
+          Implement the following plan:
+
+          $PLAN
+
+          Context:
+          $CONTEXT
+
+          Use existing code patterns from the codebase.
+          Create clean, well-documented code.
+
+  - name: review
+    description: "Review and approve implementation"
+    mode: sequential
+    max_iterations: 3
+    agents:
+      - role: reviewer
+        task_template: |
+          Review the implementation for: $TASK
+
+          Plan:
+          $PLAN
+
+          Context:
+          $CONTEXT
+
+          Implementation:
+          $EXECUTE_OUTPUT
+
+          Provide:
+          1. Overall assessment (APPROVED or issues found)
+          2. Specific issues (if any)
+          3. Recommendations for improvement
+
+          Respond with APPROVED if no major issues, or list specific issues that need fixing.

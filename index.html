@@ -1,59 +1,312 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Simple Page</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HTML5 Solar System Simulation</title>
     <style>
+        :root {
+            font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+            color-scheme: dark;
+        }
+
         * {
-            margin: 0;
-            padding: 0;
             box-sizing: border-box;
         }
 
+        html,
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #020814;
+        }
+
+        #space {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .hud {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            background: rgba(10, 17, 32, 0.72);
+            border: 1px solid rgba(140, 170, 255, 0.35);
+            border-radius: 12px;
+            padding: 12px 14px;
+            backdrop-filter: blur(6px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+            min-width: 260px;
+        }
+
+        .hud h1 {
+            margin: 0 0 10px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        .row {
             display: flex;
-            justify-content: center;
+            gap: 8px;
             align-items: center;
-            color: #333;
+            margin-bottom: 10px;
+            color: #d4ddff;
+            font-size: 0.95rem;
         }
 
-        .card {
-            background: white;
-            border-radius: 16px;
-            padding: 48px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-            text-align: center;
-            max-width: 500px;
-            width: 90%;
+        .row label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        h1 {
-            font-size: 2rem;
-            margin-bottom: 12px;
-            color: #2d3748;
+        input[type="range"] {
+            width: 150px;
         }
 
-        p {
-            font-size: 1.1rem;
-            color: #718096;
-            line-height: 1.6;
+        button {
+            border: 0;
+            border-radius: 8px;
+            padding: 7px 11px;
+            background: #3c6fff;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
         }
 
-        .emoji {
-            font-size: 3rem;
-            margin-bottom: 16px;
+        button:hover {
+            background: #4f7bff;
+        }
+
+        .small {
+            margin: 0;
+            color: #9fb0e8;
+            font-size: 0.8rem;
         }
     </style>
 </head>
 <body>
-    <main class="card">
-        <div class="emoji">👋</div>
-        <h1>Hello, World!</h1>
-        <p>Welcome to my simple HTML5 page. Clean, minimal, and ready to go.</p>
-    </main>
+    <canvas id="space"></canvas>
+
+    <div class="hud">
+        <h1>🌌 Solar System Simulation</h1>
+        <div class="row">
+            <label>
+                Speed:
+                <input id="speedSlider" type="range" min="0.1" max="4" step="0.1" value="1" />
+            </label>
+            <span id="speedValue">1.0x</span>
+        </div>
+        <div class="row">
+            <label><input id="orbitsCheckbox" type="checkbox" checked /> Show Orbits</label>
+            <button id="togglePause">Pause</button>
+        </div>
+        <p class="small">Tip: tweak speed + pause for a calmer scene.</p>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('space');
+        const ctx = canvas.getContext('2d');
+
+        const ui = {
+            speedSlider: document.getElementById('speedSlider'),
+            speedValue: document.getElementById('speedValue'),
+            orbitsCheckbox: document.getElementById('orbitsCheckbox'),
+            togglePause: document.getElementById('togglePause'),
+        };
+
+        let simulationTime = 0;
+        let paused = false;
+        let lastTimestamp = performance.now();
+        let starField = [];
+
+        const planets = [
+            { name: 'Mercury', color: '#b2b7c7', orbit: 90, size: 4, speed: 4.1, eccentricity: 0.18, phase: 0 },
+            { name: 'Venus',   color: '#d7b27e', orbit: 130, size: 6, speed: 1.6, eccentricity: 0.01, phase: 1.2 },
+            { name: 'Earth',   color: '#4f93ff', orbit: 175, size: 7, speed: 1.0, eccentricity: 0.02, phase: 2.0,
+                moons: [ { name: 'Moon', color: '#ddd', orbit: 18, size: 2, speed: 6.0, eccentricity: 0.05, phase: 0 } ]
+            },
+            { name: 'Mars',    color: '#d96d55', orbit: 220, size: 6, speed: 0.53, eccentricity: 0.09, phase: 1.0 },
+            { name: 'Jupiter', color: '#d8a56f', orbit: 280, size: 14, speed: 0.084, eccentricity: 0.04, phase: 1.7 },
+            { name: 'Saturn',  color: '#ddc9a0', orbit: 345, size: 12, speed: 0.034, eccentricity: 0.06, phase: 0.6, ring: true },
+            { name: 'Uranus',  color: '#8fd3ff', orbit: 395, size: 10, speed: 0.012, eccentricity: 0.05, phase: 2.4 },
+            { name: 'Neptune', color: '#6e85ff', orbit: 445, size: 10, speed: 0.006, eccentricity: 0.01, phase: 1.4 },
+        ];
+
+        function setCanvasSize() {
+            const dpr = Math.max(1, window.devicePixelRatio || 1);
+            canvas.width = Math.floor(window.innerWidth * dpr);
+            canvas.height = Math.floor(window.innerHeight * dpr);
+            canvas.style.width = `${window.innerWidth}px`;
+            canvas.style.height = `${window.innerHeight}px`;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            generateStars();
+        }
+
+        function generateStars() {
+            const count = Math.round((window.innerWidth * window.innerHeight) / 3500);
+            starField = Array.from({ length: count }, () => ({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() * 1.8 + 0.3,
+                baseAlpha: Math.random() * 0.4 + 0.2,
+                twinkle: Math.random() * Math.PI * 2
+            }));
+        }
+
+        function drawStars() {
+            for (const star of starField) {
+                const pulse = 0.35 * Math.sin((simulationTime * 0.001) + star.twinkle) + 0.65;
+                const alpha = star.baseAlpha * pulse;
+                ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+                ctx.beginPath();
+                ctx.arc(star.x / (window.devicePixelRatio || 1), star.y / (window.devicePixelRatio || 1), star.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function drawSun(cx, cy) {
+            const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 170);
+            glow.addColorStop(0, 'rgba(255, 240, 150, 1)');
+            glow.addColorStop(0.3, 'rgba(255, 180, 80, 0.8)');
+            glow.addColorStop(1, 'rgba(255, 130, 80, 0)');
+
+            ctx.beginPath();
+            ctx.fillStyle = glow;
+            ctx.arc(cx, cy, 22, 0, Math.PI * 2);
+            ctx.fill();
+
+            const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, 10);
+            core.addColorStop(0, '#fff3a0');
+            core.addColorStop(1, '#ff9c37');
+            ctx.beginPath();
+            ctx.fillStyle = core;
+            ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawOrbit(cx, cy, orbit, ecc) {
+            if (!ui.orbitsCheckbox.checked) return;
+
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255,255,255,0.17)';
+            ctx.setLineDash([2, 4]);
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, orbit, orbit * (1 - ecc), 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function planetPos(time, planet, cx, cy) {
+            const t = (time * 0.001 * planet.speed) + planet.phase;
+            const rX = planet.orbit;
+            const rY = planet.orbit * (1 - planet.eccentricity);
+            const x = cx + Math.cos(t) * rX;
+            const y = cy + Math.sin(t) * rY;
+            return { x, y, angle: t };
+        }
+
+        function drawPlanet(x, y, planet) {
+            const glow = ctx.createRadialGradient(x + 2, y - 2, 1, x, y, planet.size * 2.5);
+            glow.addColorStop(0, `${planet.color}`);
+            glow.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = glow;
+            ctx.beginPath();
+            ctx.arc(x, y, planet.size * 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = planet.color;
+            ctx.beginPath();
+            ctx.arc(x, y, planet.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawSaturnRing(x, y, r) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(230, 209, 170, 0.75)';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([4, 3]);
+            ctx.beginPath();
+            ctx.ellipse(x, y, r + 7, (r + 7) * 0.55, Math.PI / 12, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawScene() {
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+
+            const skyGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.max(window.innerWidth, window.innerHeight));
+            skyGradient.addColorStop(0, '#09162d');
+            skyGradient.addColorStop(1, '#02050f');
+
+            ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
+            drawStars();
+            drawSun(centerX, centerY);
+
+            for (const planet of planets) {
+                drawOrbit(centerX, centerY, planet.orbit, planet.eccentricity);
+
+                const pos = planetPos(simulationTime, planet, centerX, centerY);
+                drawPlanet(pos.x, pos.y, planet);
+
+                if (planet.ring) {
+                    drawSaturnRing(pos.x, pos.y, planet.size);
+                }
+
+                if (planet.moons) {
+                    for (const moon of planet.moons) {
+                        const moonOrbitSpeed = planet.speed * moon.speed;
+                        const t = (simulationTime * 0.001 * moonOrbitSpeed) + moon.phase;
+                        const mx = pos.x + Math.cos(t) * moon.orbit;
+                        const my = pos.y + Math.sin(t) * moon.orbit * (1 - moon.eccentricity);
+
+                        ctx.fillStyle = moon.color;
+                        ctx.beginPath();
+                        ctx.arc(mx, my, moon.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+
+            const uiText = `Simulation time: ${(simulationTime / 5000).toFixed(1)} arbitrary years`;
+            ctx.fillStyle = 'rgba(220, 227, 255, 0.85)';
+            ctx.font = '12px Segoe UI, sans-serif';
+            ctx.fillText(uiText, 16, window.innerHeight - 14);
+        }
+
+        function tick(now) {
+            const delta = now - lastTimestamp;
+            if (!paused) {
+                simulationTime += delta * parseFloat(ui.speedSlider.value);
+            }
+            lastTimestamp = now;
+
+            drawScene();
+            requestAnimationFrame(tick);
+        }
+
+        ui.speedSlider.addEventListener('input', () => {
+            ui.speedValue.textContent = `${Number(ui.speedSlider.value).toFixed(1)}x`;
+        });
+
+        ui.togglePause.addEventListener('click', () => {
+            paused = !paused;
+            ui.togglePause.textContent = paused ? 'Resume' : 'Pause';
+        });
+
+        window.addEventListener('resize', setCanvasSize);
+
+        setCanvasSize();
+        requestAnimationFrame(tick);
+    </script>
 </body>
 </html>
