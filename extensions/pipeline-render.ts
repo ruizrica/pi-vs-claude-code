@@ -138,8 +138,8 @@ export function renderVerticalTimeline(
 /**
  * Renders a single collapsed summary line for the pipeline widget.
  *
- * Active:   ` ● pipeline-name → PHASE (N agents)`
- * All done: ` ✓ pipeline-name  complete`
+ * Active:   ` ● PHASE (N agents)`
+ * All done: ` ✓ complete`
  * Empty:    ` ○ no pipeline`
  */
 export function renderCollapsedTimeline(
@@ -155,7 +155,7 @@ export function renderCollapsedTimeline(
 
 	const allDone = phases.every(p => p.status === "done");
 	if (allDone) {
-		return [truncate(" ✓ " + theme.bold(pipelineName) + "  " + theme.fg("muted", "complete"), width)];
+		return [truncate(" ✓ " + theme.fg("muted", "complete"), width)];
 	}
 
 	const active = phases[activeIndex];
@@ -165,7 +165,7 @@ export function renderCollapsedTimeline(
 
 	const agentCount = active.agents.length;
 	const agentSuffix = agentCount > 0 ? ` (${agentCount} agents)` : "";
-	const line = " ● " + theme.bold(pipelineName) + " → " + theme.fg("accent", active.name.toUpperCase()) + theme.fg("dim", agentSuffix);
+	const line = " ● " + theme.fg("accent", active.name.toUpperCase()) + theme.fg("dim", agentSuffix);
 	return [truncate(line, width)];
 }
 

@@ -249,7 +249,7 @@ describe("renderVerticalTimeline", () => {
 describe("renderCollapsedTimeline", () => {
 	const WIDTH = 60;
 
-	it("active phase with agents — shows ● name → PHASE (N agents)", () => {
+	it("active phase with agents — shows ● PHASE (N agents)", () => {
 		const phases = [
 			makePhase({ name: "understand", status: "done", summary: "done" }),
 			makePhase({
@@ -268,13 +268,12 @@ describe("renderCollapsedTimeline", () => {
 
 		expect(lines.length).toBe(1);
 		expect(lines[0]).toContain("●");
-		expect(lines[0]).toContain("feature-scout");
-		expect(lines[0]).toContain("→");
 		expect(lines[0]).toContain("GATHER");
 		expect(lines[0]).toContain("(3 agents)");
+		expect(lines[0]).not.toContain("feature-scout");
 	});
 
-	it("active phase with 0 agents — shows ● name → PHASE without agent count", () => {
+	it("active phase with 0 agents — shows ● PHASE without agent count", () => {
 		const phases = [
 			makePhase({ name: "understand", status: "active" }),
 			makePhase({ name: "gather" }),
@@ -284,8 +283,8 @@ describe("renderCollapsedTimeline", () => {
 
 		expect(lines.length).toBe(1);
 		expect(lines[0]).toContain("●");
-		expect(lines[0]).toContain("my-pipeline");
 		expect(lines[0]).toContain("UNDERSTAND");
+		expect(lines[0]).not.toContain("my-pipeline");
 		expect(lines[0]).not.toContain("agents");
 	});
 
@@ -296,7 +295,7 @@ describe("renderCollapsedTimeline", () => {
 		expect(lines[0]).toContain("○");
 	});
 
-	it("all done — shows ✓ name complete", () => {
+	it("all done — shows ✓ complete", () => {
 		const phases = [
 			makePhase({ name: "understand", status: "done", summary: "done" }),
 			makePhase({ name: "gather", status: "done", summary: "done" }),
@@ -307,8 +306,8 @@ describe("renderCollapsedTimeline", () => {
 
 		expect(lines.length).toBe(1);
 		expect(lines[0]).toContain("✓");
-		expect(lines[0]).toContain("feature-scout");
 		expect(lines[0]).toContain("complete");
+		expect(lines[0]).not.toContain("feature-scout");
 		expect(lines[0]).not.toContain("●");
 	});
 

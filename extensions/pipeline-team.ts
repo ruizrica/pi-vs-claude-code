@@ -353,8 +353,17 @@ export default function (pi: ExtensionAPI) {
 
 	// ── Widget ───────────────────────────────────
 
+	function updateStatus() {
+		if (!widgetCtx) return;
+		const phase = phaseStates[currentPhaseIndex];
+		if (phase) {
+			widgetCtx.ui.setStatus("pipeline-team", phase.def.name.toUpperCase());
+		}
+	}
+
 	function updateWidget() {
 		if (!widgetCtx) return;
+		updateStatus();
 
 		widgetCtx.ui.setWidget("pipeline-team", (_tui: any, theme: any) => {
 			const text = new Text("", 0, 1);
@@ -934,9 +943,10 @@ export default function (pi: ExtensionAPI) {
 				return;
 			}
 
+			/** Shows pipeline name with its first phase (starting point) */
 			const options = pipelineConfigs.map(c => {
-				const phases = c.phases.map(p => displayName(p.name)).join(" → ");
-				return `${c.name} — ${phases}`;
+				const firstPhase = c.phases[0] ? displayName(c.phases[0].name) : "No Phases";
+				return `${c.name} — ${firstPhase}`;
 			});
 
 			const choice = await ctx.ui.select("Select Pipeline", options);
@@ -944,7 +954,7 @@ export default function (pi: ExtensionAPI) {
 
 			const idx = options.indexOf(choice);
 			activatePipeline(pipelineConfigs[idx]);
-			ctx.ui.setStatus("pipeline-team", `Pipeline: ${activeConfig!.name}`);
+			updateStatus();
 			ctx.ui.notify(`Pipeline: ${activeConfig!.name}\n${activeConfig!.description}`, "info");
 		},
 	});
@@ -979,7 +989,7 @@ export default function (pi: ExtensionAPI) {
 			widgetCtx = ctx;
 			resetPipeline();
 			ctx.ui.notify("Pipeline reset to phase 1", "info");
-			ctx.ui.setStatus("pipeline-team", `Pipeline: ${activeConfig?.name || "none"} (reset)`);
+			updateStatus();
 		},
 	});
 
@@ -1155,7 +1165,7 @@ ${contextSummary}${planSection}${reviewSection}
 		// Default to first pipeline
 		activatePipeline(pipelineConfigs[0]);
 
-		_ctx.ui.setStatus("pipeline-team", `Pipeline: ${activeConfig!.name}`);
+		updateStatus();
 		_ctx.ui.notify(
 			`Pipeline: ${activeConfig!.name}\n${activeConfig!.description}\n\n` +
 			`Phase 1: ${phaseStates[0]?.def.description || "UNDERSTAND"}\n\n` +
@@ -1167,37 +1177,29 @@ ${contextSummary}${planSection}${reviewSection}
 			"info",
 		);
 
-		// Status bar: model | pipeline name | phase | context bar (belowEditor widget)
-		_ctx.ui.setWidget("pipeline-status-bar", (_tui, theme) => {
-			const text = new Text("", 0, 0);
-			return {
-				render(width: number): string[] {
-					const model = _ctx.model?.id || "no-model";
-					const usage = _ctx.getContextUsage();
-					const pct = usage ? usage.percent : 0;
-					const filled = Math.round(pct / 10);
-					const bar = "#".repeat(filled) + "-".repeat(10 - filled);
+		// Footer: model | phase | context bar
+		_ctx.ui.setFooter((_tui, theme, _footerData) => ({
+			dispose: () => {},
+			invalidate() {},
+			render(width: number): string[] {
+				const model = _ctx.model?.id || "no-model";
+				const usage = _ctx.getContextUsage();
+				const pct = usage ? usage.percent : 0;
+				const filled = Math.round(pct / 10);
+				const bar = "#".repeat(filled) + "-".repeat(10 - filled);
 
-					const pipeLabel = activeConfig
-						? theme.fg("accent", activeConfig.name)
-						: theme.fg("dim", "no pipeline");
-					const phaseLabel = phaseStates[currentPhaseIndex]
-						? theme.fg("success", phaseStates[currentPhaseIndex].def.name.toUpperCase())
-						: "";
+				const phaseLabel = phaseStates[currentPhaseIndex]
+					? theme.fg("success", phaseStates[currentPhaseIndex].def.name.toUpperCase())
+					: "";
 
-					const left = theme.fg("dim", ` ${model}`) +
-						theme.fg("muted", " · ") +
-						pipeLabel +
-						theme.fg("muted", " · ") +
-						phaseLabel;
-					const right = theme.fg("dim", `[${bar}] ${Math.round(pct)}% `);
-					const pad = " ".repeat(Math.max(1, width - visibleWidth(left) - visibleWidth(right)));
+				const left = theme.fg("dim", ` ${model}`) +
+					theme.fg("muted", " · ") +
+					phaseLabel;
+				const right = theme.fg("dim", `[${bar}] ${Math.round(pct)}% `);
+				const pad = " ".repeat(Math.max(1, width - visibleWidth(left) - visibleWidth(right)));
 
-					text.setText(truncateToWidth(left + pad + right, width));
-					return text.render(width);
-				},
-				invalidate() { text.invalidate(); },
-			};
-		}, { placement: "belowEditor" });
+				return [truncateToWidth(left + pad + right, width)];
+			},
+		}));
 	});
 }
