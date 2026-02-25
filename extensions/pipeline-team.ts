@@ -1,6 +1,6 @@
 /**
  * ABOUTME: Pipeline-Team — Hybrid sequential pipeline with parallel agent dispatch
- * ABOUTME: Combines agent-chain (sequential phases) with agent-team (parallel dispatch) plus Ctrl+X overlay
+ * ABOUTME: Combines agent-chain (sequential phases) with agent-team (parallel dispatch) plus Ctrl+B overlay
  *
  * Pipeline: UNDERSTAND → GATHER → PLAN → EXECUTE → REVIEW
  *
@@ -29,7 +29,8 @@ import {
 import { DynamicBorder } from "@mariozechner/pi-coding-agent";
 import { spawn } from "child_process";
 import { readFileSync, existsSync, readdirSync, mkdirSync, unlinkSync } from "fs";
-import { join, resolve, basename } from "path";
+import { join, resolve, basename, dirname } from "path";
+import { fileURLToPath } from "url";
 import { applyExtensionDefaults } from "./themeMap.ts";
 
 // ── Types ────────────────────────────────────────
@@ -305,7 +306,13 @@ export default function (pi: ExtensionAPI) {
 
 		allAgents = scanAgentDirs(cwd);
 
-		const configPath = join(cwd, ".pi", "agents", "pipeline-team.yaml");
+		// Look for config in cwd first, fall back to extension's own project dir
+		const extDir = dirname(fileURLToPath(import.meta.url));
+		const extProjectDir = resolve(extDir, "..");
+		let configPath = join(cwd, ".pi", "agents", "pipeline-team.yaml");
+		if (!existsSync(configPath)) {
+			configPath = join(extProjectDir, ".pi", "agents", "pipeline-team.yaml");
+		}
 		if (existsSync(configPath)) {
 			try {
 				pipelineConfigs = parsePipelineYaml(readFileSync(configPath, "utf-8"));
@@ -679,7 +686,7 @@ export default function (pi: ExtensionAPI) {
 		return { outputs, success: allSuccess };
 	}
 
-	// ── Ctrl+X Overlay ───────────────────────────
+	// ── Ctrl+J Overlay ───────────────────────────
 
 	class AgentGridOverlay {
 		private selectedIndex = 0;
@@ -1103,9 +1110,9 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
-	// ── Ctrl+X Shortcut ──────────────────────────
+	// ── Ctrl+J Shortcut ──────────────────────────
 
-	pi.registerShortcut("ctrl+x", {
+	pi.registerShortcut("ctrl+j", {
 		description: "Open agent grid overlay",
 		handler: async (ctx) => {
 			const agents = collectOverlayAgents();
@@ -1272,7 +1279,7 @@ ${contextSummary}${planSection}${reviewSection}
 			`/pipeline-status     Full pipeline state\n` +
 			`/pipeline-grid N     Set grid columns (1-6)\n` +
 			`/pipeline-reset      Reset to phase 1\n` +
-			`Ctrl+X               Inspect agent output`,
+			`Ctrl+J               Inspect agent output`,
 			"info",
 		);
 
