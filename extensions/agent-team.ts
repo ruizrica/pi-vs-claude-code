@@ -13,6 +13,7 @@
  *   /agents-team          — switch active team
  *   /agents-list          — list loaded agents
  *   /agents-grid N        — set column count (default 2)
+ *   /agents-view          — toggle full/compact card view
  *
  * Usage: pi -e extensions/agent-team.ts
  */
@@ -24,6 +25,7 @@ import { spawn } from "child_process";
 import { readdirSync, readFileSync, existsSync, mkdirSync, unlinkSync } from "fs";
 import { join, resolve } from "path";
 import { applyExtensionDefaults } from "./themeMap.ts";
+import { renderCompactCard } from "./agent-team-render.ts";
 
 // ── Types ────────────────────────────────────────
 
@@ -140,6 +142,7 @@ export default function (pi: ExtensionAPI) {
 	let teams: Record<string, string[]> = {};
 	let activeTeamName = "";
 	let gridCols = 2;
+	let viewMode: "full" | "compact" = "full";
 	let widgetCtx: any;
 	let sessionDir = "";
 	let contextWindow = 0;
@@ -273,10 +276,20 @@ export default function (pi: ExtensionAPI) {
 
 					for (let i = 0; i < agents.length; i += cols) {
 						const rowAgents = agents.slice(i, i + cols);
-						const cards = rowAgents.map(a => renderCard(a, colWidth, theme));
+						const cards = rowAgents.map(a => {
+							if (viewMode === "compact") {
+								return renderCompactCard(
+									{ name: a.def.name, status: a.status, elapsed: a.elapsed, contextPct: a.contextPct },
+									colWidth,
+									theme,
+								);
+							}
+							return renderCard(a, colWidth, theme);
+						});
 
+						const emptyHeight = viewMode === "compact" ? 4 : 6;
 						while (cards.length < cols) {
-							cards.push(Array(6).fill(" ".repeat(colWidth)));
+							cards.push(Array(emptyHeight).fill(" ".repeat(colWidth)));
 						}
 
 						const cardHeight = cards[0].length;
@@ -626,9 +639,42 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
+	pi.registerCommand("agents-view", {
+		description: "Toggle card view: full or compact",
+		getArgumentCompletions: (prefix: string): AutocompleteItem[] | null => {
+			const items = [
+				{ value: "full", label: "Full cards (6 lines)" },
+				{ value: "compact", label: "Compact cards (4 lines)" },
+			];
+			const filtered = items.filter(i => i.value.startsWith(prefix));
+			return filtered.length > 0 ? filtered : items;
+		},
+		handler: async (args, _ctx) => {
+			widgetCtx = _ctx;
+			const arg = args?.trim().toLowerCase();
+			if (arg === "full" || arg === "compact") {
+				viewMode = arg;
+			} else {
+				viewMode = viewMode === "full" ? "compact" : "full";
+			}
+			_ctx.ui.notify(`View: ${viewMode}`, "info");
+			updateWidget();
+		},
+	});
+
 	// ── System Prompt Override ───────────────────
 
 	pi.on("before_agent_start", async (_event, _ctx) => {
+		// Reset all agents to idle so stale done/error states don't linger
+		for (const state of agentStates.values()) {
+			state.status = "idle";
+			state.task = "";
+			state.toolCount = 0;
+			state.elapsed = 0;
+			state.lastWork = "";
+		}
+		updateWidget();
+
 		// Build dynamic agent catalog from active team only
 		const agentCatalog = Array.from(agentStates.values())
 			.map(s => `### ${displayName(s.def.name)}\n**Dispatch as:** \`${s.def.name}\`\n${s.def.description}\n**Tools:** ${s.def.tools}`)
@@ -705,7 +751,8 @@ ${agentCatalog}`,
 			`Team sets loaded from: .pi/agents/teams.yaml\n\n` +
 			`/agents-team          Select a team\n` +
 			`/agents-list          List active agents and status\n` +
-			`/agents-grid <1-6>    Set grid column count`,
+			`/agents-grid <1-6>    Set grid column count\n` +
+			`/agents-view          Toggle full/compact view`,
 			"info",
 		);
 		updateWidget();
