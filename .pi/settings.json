@@ -3,5 +3,6 @@
   "quietStartup": true,
   "prompts": [
     "../.claude/commands"
-  ]
+  ],
+  "packages": []
 }

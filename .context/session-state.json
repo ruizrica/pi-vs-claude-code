@@ -1,0 +1,29 @@
+{
+  "$schema": "session-state-v2",
+  "project": "pi-vs-claude-code",
+  "cwd": "/Users/ricardo/Workshop/Github-Work/pi-vs-claude-code",
+  "ts": "2026-02-25T16:04:00-05:00",
+  "continue": "All extensions are globally installed at ~/.pi/agent/extensions/. The pi-* shell functions in .zshrc call pi directly with absolute paths. User needs to open a NEW terminal (not source ~/.zshrc) and test 'pi-dev' from a different directory to verify pi uses the caller's cwd via global auto-discovery. If pi still anchors to wrong dir, the issue is pi resolving import paths back to the source project — would need actual file copies that don't import from the original project.",
+  "task": "Setting up pi extensions to run from any directory via global install and shell functions",
+  "todos": [
+    {"t": "Verify pi-dev works from arbitrary directory with global extensions (needs new terminal)", "done": false},
+    {"t": "Consider suppressing themeMap.ts/pipeline-render.ts warnings (rename or subdirectory)", "done": false}
+  ],
+  "files": [
+    "extensions/pipeline-team.ts",
+    "extensions/pipeline-render.ts",
+    "extensions/pipeline-render.test.ts",
+    "extensions/tilldone.ts",
+    "justfile",
+    "/Users/ricardo/.zshrc"
+  ],
+  "files_read": [
+    "extensions/pipeline-team.ts",
+    "extensions/pipeline-render.ts",
+    "extensions/pipeline-render.test.ts",
+    "extensions/tilldone.ts",
+    "justfile",
+    "/Users/ricardo/.zshrc",
+    "/Users/ricardo/.pi/agent/settings.json"
+  ]
+}

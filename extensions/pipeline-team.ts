@@ -1177,29 +1177,5 @@ ${contextSummary}${planSection}${reviewSection}
 			"info",
 		);
 
-		// Footer: model | phase | context bar
-		_ctx.ui.setFooter((_tui, theme, _footerData) => ({
-			dispose: () => {},
-			invalidate() {},
-			render(width: number): string[] {
-				const model = _ctx.model?.id || "no-model";
-				const usage = _ctx.getContextUsage();
-				const pct = usage ? usage.percent : 0;
-				const filled = Math.round(pct / 10);
-				const bar = "#".repeat(filled) + "-".repeat(10 - filled);
-
-				const phaseLabel = phaseStates[currentPhaseIndex]
-					? theme.fg("success", phaseStates[currentPhaseIndex].def.name.toUpperCase())
-					: "";
-
-				const left = theme.fg("dim", ` ${model}`) +
-					theme.fg("muted", " · ") +
-					phaseLabel;
-				const right = theme.fg("dim", `[${bar}] ${Math.round(pct)}% `);
-				const pad = " ".repeat(Math.max(1, width - visibleWidth(left) - visibleWidth(right)));
-
-				return [truncateToWidth(left + pad + right, width)];
-			},
-		}));
 	});
 }
