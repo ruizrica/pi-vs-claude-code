@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dungeon Crawler — Level & Effects Demo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #000;
+            color: #ccc;
+            font-family: monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 10px;
+        }
+        h1 { color: #00ff88; font-size: 16px; margin-bottom: 8px; }
+        canvas {
+            border: 1px solid #333;
+            image-rendering: pixelated;
+        }
+        .controls {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            background: #222;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 6px 16px;
+            font-family: monospace;
+            cursor: pointer;
+        }
+        button:hover { background: #0f03; }
+        .info { font-size: 12px; color: #888; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <h1>Level System & Effects Demo</h1>
+    <canvas id="gameCanvas" width="960" height="640"></canvas>
+    <div class="controls">
+        <button onclick="switchLevel(0)">Level 1: The Crypt</button>
+        <button onclick="switchLevel(1)">Level 2: The Inferno</button>
+        <button onclick="switchLevel(2)">Level 3: The Void Nexus</button>
+        <button onclick="triggerEffects()">Trigger Effects</button>
+        <button onclick="simulateClear()">Simulate Room Clear</button>
+    </div>
+    <div class="info">Click "Trigger Effects" for explosions, text, flashes. "Simulate Room Clear" to unlock doors.</div>
+
+    <script src="js/contracts.js"></script>
+    <script src="js/effects.js"></script>
+    <script src="js/levels.js"></script>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Stub enemies
+        window.Game.Enemies = {
+            _enemies: [],
+            getAll() { return this._enemies; },
+            spawn(type, x, y) { this._enemies.push({ type, x, y, alive: true }); },
+            clear() { this._enemies = []; },
+        };
+
+        Game.Effects.init();
+        Game.Levels.init();
+        Game.Levels.loadLevel(0);
+
+        function switchLevel(idx) {
+            Game.Enemies._enemies = [];
+            Game.Effects.init();
+            Game.Levels.loadLevel(idx);
+        }
+
+        function triggerEffects() {
+            const spawn = Game.Levels.getPlayerSpawn();
+            Game.Effects.spawnExplosion(spawn.x, spawn.y, '#ff6600', 25);
+            Game.Effects.spawnText(spawn.x, spawn.y - 20, '-42', '#ff3366');
+            Game.Effects.spawnText(spawn.x + 30, spawn.y - 10, '+100 XP', '#00ff88');
+            Game.Effects.screenFlash('#ffffff', 15);
+            Game.Effects.addTrail(spawn.x - 20, spawn.y, '#00ffff');
+            Game.Effects.addTrail(spawn.x - 15, spawn.y, '#00ffff');
+            Game.Effects.addTrail(spawn.x - 10, spawn.y, '#00ffff');
+            Game.Effects.addTrail(spawn.x - 5, spawn.y, '#00ffff');
+        }
+
+        function simulateClear() {
+            // Kill all enemies to trigger room clear
+            for (const e of Game.Enemies._enemies) e.alive = false;
+            Game.Effects.spawnExplosion(480, 320, '#00ff88', 30);
+            Game.Effects.screenFlash('#00ff88', 20);
+        }
+
+        Game.Events.on('room-cleared', (data) => {
+            console.log('Room cleared!', data);
+            Game.Effects.spawnText(480, 300, 'ROOM CLEARED!', '#00ff88');
+        });
+        Game.Events.on('boss-spawn', (data) => {
+            console.log('Boss spawned!', data);
+            Game.Effects.screenFlash('#ff0000', 30);
+            Game.Effects.spawnText(480, 300, 'BOSS INCOMING!', '#ff3366');
+        });
+        Game.Events.on('level-complete', (data) => {
+            console.log('Level complete!', data);
+            Game.Effects.screenFlash('#ffff00', 40);
+            Game.Effects.spawnText(480, 300, 'LEVEL COMPLETE!', '#ffff00');
+        });
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            Game.Levels.update();
+            Game.Effects.update();
+
+            Game.Levels.draw(ctx);
+            Game.Effects.draw(ctx);
+
+            requestAnimationFrame(gameLoop);
+        }
+        gameLoop();
+    </script>
+</body>
+</html>

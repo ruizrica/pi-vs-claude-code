@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Levels.js Tests</title>
+    <style>
+        body { background: #111; color: #0f0; font-family: monospace; padding: 20px; }
+        .pass { color: #0f0; }
+        .fail { color: #f33; }
+        .section { color: #ff0; margin-top: 12px; }
+    </style>
+</head>
+<body>
+    <h2>Levels.js — Unit Tests</h2>
+    <div id="results"></div>
+    <script src="../js/contracts.js"></script>
+    <script src="../js/effects.js"></script>
+    <script src="../js/levels.js"></script>
+    <script>
+        const out = document.getElementById('results');
+        let passed = 0, failed = 0;
+
+        function assert(cond, msg) {
+            if (cond) {
+                passed++;
+                out.innerHTML += `<div class="pass">✓ ${msg}</div>`;
+            } else {
+                failed++;
+                out.innerHTML += `<div class="fail">✗ ${msg}</div>`;
+            }
+        }
+
+        function section(name) {
+            out.innerHTML += `<div class="section">— ${name} —</div>`;
+        }
+
+        // Stub Game.Enemies so levels can query enemy count
+        window.Game.Enemies = {
+            _enemies: [],
+            getAll() { return this._enemies; },
+            spawn(type, x, y) { this._enemies.push({ type, x, y, alive: true }); },
+            clear() { this._enemies = []; },
+        };
+
+        // ========== API existence ==========
+        section('API');
+        assert(typeof Game.Levels === 'object', 'Game.Levels exists');
+        assert(typeof Game.Levels.init === 'function', 'init() exists');
+        assert(typeof Game.Levels.loadLevel === 'function', 'loadLevel() exists');
+        assert(typeof Game.Levels.update === 'function', 'update() exists');
+        assert(typeof Game.Levels.draw === 'function', 'draw() exists');
+        assert(typeof Game.Levels.getCurrentTilemap === 'function', 'getCurrentTilemap() exists');
+        assert(typeof Game.Levels.getPlayerSpawn === 'function', 'getPlayerSpawn() exists');
+        assert(typeof Game.Levels.isWall === 'function', 'isWall() exists');
+
+        // ========== init & loadLevel ==========
+        section('init & loadLevel');
+        Game.Levels.init();
+        Game.Levels.loadLevel(0);
+
+        const map = Game.Levels.getCurrentTilemap();
+        assert(Array.isArray(map), 'getCurrentTilemap returns array');
+        assert(map.length === Game.CONST.ROOM_H, `tilemap has ${Game.CONST.ROOM_H} rows (got ${map.length})`);
+        assert(map[0].length === Game.CONST.ROOM_W, `tilemap has ${Game.CONST.ROOM_W} cols (got ${map[0].length})`);
+
+        // ========== tile values ==========
+        section('Tile Values');
+        const flatTiles = map.flat();
+        const uniqueTiles = [...new Set(flatTiles)];
+        assert(uniqueTiles.includes(0), 'tilemap contains floor tiles (0)');
+        assert(uniqueTiles.includes(1), 'tilemap contains wall tiles (1)');
+        // Doors may or may not be present initially
+        const hasDoors = uniqueTiles.includes(2) || uniqueTiles.includes(3);
+        assert(hasDoors, 'tilemap contains door tiles (2 or 3)');
+
+        // ========== borders are walls ==========
+        section('Border Walls');
+        let allTopWalls = true, allBottomWalls = true, allLeftWalls = true, allRightWalls = true;
+        for (let x = 0; x < Game.CONST.ROOM_W; x++) {
+            if (map[0][x] !== 1) allTopWalls = false;
+            if (map[Game.CONST.ROOM_H - 1][x] !== 1) allBottomWalls = false;
+        }
+        for (let y = 0; y < Game.CONST.ROOM_H; y++) {
+            if (map[y][0] !== 1) allLeftWalls = false;
+            if (map[y][Game.CONST.ROOM_W - 1] !== 1) allRightWalls = false;
+        }
+        assert(allTopWalls, 'top border is all walls');
+        assert(allBottomWalls, 'bottom border is all walls');
+        assert(allLeftWalls, 'left border is all walls');
+        assert(allRightWalls, 'right border is all walls');
+
+        // ========== isWall ==========
+        section('isWall');
+        assert(Game.Levels.isWall(0, 0) === true, 'corner (0,0) is wall');
+        // Find a floor tile for testing
+        let floorFound = false;
+        for (let y = 1; y < Game.CONST.ROOM_H - 1 && !floorFound; y++) {
+            for (let x = 1; x < Game.CONST.ROOM_W - 1 && !floorFound; x++) {
+                if (map[y][x] === 0) {
+                    assert(Game.Levels.isWall(x, y) === false, `floor tile (${x},${y}) is not wall`);
+                    floorFound = true;
+                }
+            }
+        }
+        assert(floorFound, 'found at least one floor tile');
+        // Out of bounds = wall
+        assert(Game.Levels.isWall(-1, 0) === true, 'out of bounds (-1,0) is wall');
+        assert(Game.Levels.isWall(99, 99) === true, 'out of bounds (99,99) is wall');
+
+        // ========== player spawn ==========
+        section('Player Spawn');
+        const spawn = Game.Levels.getPlayerSpawn();
+        assert(typeof spawn === 'object' && typeof spawn.x === 'number' && typeof spawn.y === 'number',
+            'getPlayerSpawn returns {x, y}');
+        // Spawn should be on a floor tile (pixel coords → tile coords)
+        const spawnTX = Math.floor(spawn.x / Game.CONST.TILE_SIZE);
+        const spawnTY = Math.floor(spawn.y / Game.CONST.TILE_SIZE);
+        assert(map[spawnTY] && map[spawnTY][spawnTX] === 0,
+            `player spawn tile (${spawnTX},${spawnTY}) is floor`);
+
+        // ========== all three levels load ==========
+        section('All Levels');
+        for (let i = 0; i < 3; i++) {
+            Game.Levels.loadLevel(i);
+            const m = Game.Levels.getCurrentTilemap();
+            assert(m.length === Game.CONST.ROOM_H, `level ${i}: correct height`);
+            assert(m[0].length === Game.CONST.ROOM_W, `level ${i}: correct width`);
+            const s = Game.Levels.getPlayerSpawn();
+            assert(s.x > 0 && s.y > 0, `level ${i}: valid spawn position`);
+        }
+
+        // ========== draw smoke test ==========
+        section('Draw');
+        const canvas = document.createElement('canvas');
+        canvas.width = Game.CONST.CANVAS_W;
+        canvas.height = Game.CONST.CANVAS_H;
+        const ctx = canvas.getContext('2d');
+        Game.Levels.loadLevel(0);
+        let drawError = null;
+        try {
+            Game.Levels.draw(ctx);
+        } catch (e) {
+            drawError = e;
+        }
+        assert(drawError === null, `draw() runs without error${drawError ? ': ' + drawError.message : ''}`);
+
+        // ========== events ==========
+        section('Events');
+        let clearedFired = false;
+        Game.Events.on('room-cleared', () => clearedFired = true);
+        // We can't fully test wave logic in a unit test, but ensure update doesn't crash
+        let updateError = null;
+        try {
+            Game.Levels.update();
+        } catch (e) {
+            updateError = e;
+        }
+        assert(updateError === null, `update() runs without error${updateError ? ': ' + updateError.message : ''}`);
+
+        // ========== summary ==========
+        out.innerHTML += `<div class="section" style="margin-top:20px">═══════════════</div>`;
+        out.innerHTML += `<div class="${failed ? 'fail' : 'pass'}">Passed: ${passed} | Failed: ${failed}</div>`;
+    </script>
+</body>
+</html>

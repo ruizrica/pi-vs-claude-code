@@ -320,16 +320,14 @@
         const wave = waves[roomIdx];
         const r = rooms[roomIdx];
 
-        const enemyList = [];
         for (const entry of wave) {
             if (entry.type === 'boss') {
                 // Boss spawn
                 const bx = (r.x + Math.floor(r.w / 2)) * TILE;
                 const by = (r.y + Math.floor(r.h / 2)) * TILE;
-                if (Game.Bosses && Game.Bosses.spawn) {
-                    Game.Bosses.spawn(currentLevel);
+                if (Game.Enemies && Game.Enemies.spawn) {
+                    Game.Enemies.spawn(entry.boss, bx, by);
                 }
-                Game.state.bossActive = true;
                 if (Game.Events) Game.Events.emit('boss-spawn', { boss: entry.boss, level: currentLevel });
                 bossSpawned = true;
             } else {
@@ -337,25 +335,20 @@
                     // Random position within room
                     const ex = (r.x + 2 + Math.floor(Math.random() * (r.w - 4))) * TILE;
                     const ey = (r.y + 2 + Math.floor(Math.random() * (r.h - 4))) * TILE;
-                    enemyList.push({ type: entry.type, x: ex, y: ey });
+                    if (Game.Enemies && Game.Enemies.spawn) {
+                        Game.Enemies.spawn(entry.type, ex, ey);
+                    }
                 }
             }
-        }
-        if (enemyList.length > 0 && Game.Enemies && Game.Enemies.spawnWave) {
-            Game.Enemies.spawnWave(enemyList);
         }
     }
 
     function getEnemyCount() {
-        let count = 0;
-        if (Game.Enemies && Game.Enemies.count) {
-            count += Game.Enemies.count();
+        if (Game.Enemies && Game.Enemies.getAll) {
+            const all = Game.Enemies.getAll();
+            return all.filter(function (e) { return e.alive !== false; }).length;
         }
-        // Also count boss as an enemy for room clearing
-        if (Game.Bosses && Game.Bosses.isAlive && Game.Bosses.isAlive()) {
-            count += 1;
-        }
-        return count;
+        return 0;
     }
 
     // ========== Rendering ==========
@@ -582,13 +575,14 @@
 
             // Determine which room the player is in (use spawn as fallback)
             let px = playerSpawn.x, py = playerSpawn.y;
-            if (Game.Player && Game.Player.x !== undefined) {
-                px = Game.Player.x;
-                py = Game.Player.y;
+            if (Game.Player && Game.Player.getPosition) {
+                const pos = Game.Player.getPosition();
+                px = pos.x;
+                py = pos.y;
             }
 
             const roomIdx = getRoomAt(px, py);
-            if (roomIdx >= 0) {
+            if (roomIdx >= 0 && roomIdx !== currentRoom) {
                 currentRoom = roomIdx;
             }
 
