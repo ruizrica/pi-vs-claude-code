@@ -76,9 +76,9 @@ window.Game.CONST = {
     
     // Level themes
     LEVEL_THEMES: [
-        { name: 'The Crypt',       wall: '#1a1a2e', wallLight: '#2a2a44', floor: '#12121a', accent: '#3344aa' },
-        { name: 'The Inferno',     wall: '#2e1a1a', wallLight: '#442a2a', floor: '#1a1212', accent: '#aa4433' },
-        { name: 'The Void Nexus',  wall: '#1a1a2e', wallLight: '#2a1a3e', floor: '#0f0a18', accent: '#8833cc' },
+        { name: 'The Crypt',       wall: '#1a1a2e', floor: '#12121a', accent: '#3344aa' },
+        { name: 'The Inferno',     wall: '#2e1a1a', floor: '#1a1212', accent: '#aa4433' },
+        { name: 'The Void Nexus',  wall: '#1a1a2e', floor: '#0f0a18', accent: '#8833cc' },
     ],
 };
 

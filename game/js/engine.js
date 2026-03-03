@@ -90,15 +90,6 @@
                 if (e.code === 'Escape') {
                     this._handleEscape();
                 }
-
-                // Enter key — start/restart game
-                if (e.code === 'Enter' || e.code === 'NumpadEnter') {
-                    if (Game.state.screen === 'menu' || 
-                        Game.state.screen === 'gameover' || 
-                        Game.state.screen === 'victory') {
-                        this._startGame();
-                    }
-                }
             });
 
             canvas.addEventListener('mousemove', (e) => {
@@ -146,25 +137,24 @@
         },
 
         _startGame() {
-            // Delegate to Main if available, otherwise do basic init
-            if (Game.Main && Game.Main.startGame) {
-                Game.Main.startGame();
-            } else {
-                Game.state.screen = 'playing';
-                Game.state.level = 0;
-                Game.state.score = 0;
-                Game.state.kills = 0;
-                Game.state.time = 0;
-                Game.state.bossActive = false;
-                Game.state.bossDefeated = false;
-                if (Game.Player && Game.Player.init) Game.Player.init();
-                if (Game.Enemies && Game.Enemies.init) Game.Enemies.init();
-                if (Game.Levels && Game.Levels.init) Game.Levels.init();
-            }
+            Game.state.screen = 'playing';
+            Game.state.level = 0;
+            Game.state.score = 0;
+            Game.state.kills = 0;
+            Game.state.time = 0;
+            Game.state.bossActive = false;
+            Game.state.bossDefeated = false;
             Game.state.shakeTimer = 0;
             Game.state.shakeIntensity = 0;
+
+            // Initialize subsystems
+            if (Game.Player && Game.Player.init) Game.Player.init();
+            if (Game.Enemies && Game.Enemies.init) Game.Enemies.init();
+            if (Game.Levels && Game.Levels.init) Game.Levels.init();
+
             particles.length = 0;
             this.lastTime = performance.now();
+
             Game.Events.emit('game-start');
         },
 
@@ -207,12 +197,7 @@
             // Update subsystems (guard against missing modules)
             if (Game.Player && Game.Player.update) Game.Player.update(dt);
             if (Game.Enemies && Game.Enemies.update) Game.Enemies.update(dt);
-            if (Game.Bosses && Game.Bosses.update) Game.Bosses.update(dt);
-            if (Game.Effects && Game.Effects.update) Game.Effects.update();
             if (Game.Levels && Game.Levels.update) Game.Levels.update(dt);
-
-            // ── COLLISION: Player projectiles vs Enemies & Boss ──
-            this._checkProjectileCollisions();
 
             // Update particles
             this._updateParticles(dt);
@@ -280,12 +265,6 @@
             // Draw enemies
             if (Game.Enemies && Game.Enemies.draw) Game.Enemies.draw(ctx);
 
-            // Draw bosses
-            if (Game.Bosses && Game.Bosses.draw) Game.Bosses.draw(ctx);
-
-            // Draw effects (above game, below UI)
-            if (Game.Effects && Game.Effects.draw) Game.Effects.draw(ctx);
-
             // Draw player
             if (Game.Player && Game.Player.draw) Game.Player.draw(ctx);
 
@@ -300,73 +279,6 @@
             // Paused overlay
             if (Game.state.screen === 'paused') {
                 this._drawPausedOverlay(ctx);
-            }
-        },
-
-        // ────────────────────────────────────────────────────────
-        // PROJECTILE ↔ ENTITY COLLISION
-        // ────────────────────────────────────────────────────────
-        _checkProjectileCollisions() {
-            if (!Game.Player || !Game.Player.projectiles) return;
-
-            const projs = Game.Player.projectiles;
-
-            for (let i = projs.length - 1; i >= 0; i--) {
-                const p = projs[i];
-                let hit = false;
-
-                // Check vs enemies
-                if (Game.Enemies && Game.Enemies.getAll) {
-                    const enemies = Game.Enemies.getAll();
-                    for (const e of enemies) {
-                        if (!e.alive) continue;
-                        const dist = U().dist(p, e);
-                        if (dist < p.size + e.size * 0.6) {
-                            e.hp -= p.damage;
-                            e.flashTimer = 6;
-                            hit = true;
-
-                            // Hit particles
-                            for (let j = 0; j < 3; j++) {
-                                this.addParticle({
-                                    x: p.x, y: p.y,
-                                    vx: (Math.random() - 0.5) * 4,
-                                    vy: (Math.random() - 0.5) * 4,
-                                    life: 8 + Math.random() * 8,
-                                    color: e.color || '#ff3366',
-                                    size: 2 + Math.random() * 2,
-                                });
-                            }
-
-                            // Floating damage text
-                            if (Game.Effects && Game.Effects.spawnText) {
-                                Game.Effects.spawnText(p.x, p.y - 10, `-${p.damage}`, '#ff4444');
-                            }
-                            break;
-                        }
-                    }
-                }
-
-                // Check vs boss
-                if (!hit && Game.Bosses && Game.Bosses.isAlive && Game.Bosses.isAlive()) {
-                    const boss = Game.Bosses.getActive();
-                    if (boss) {
-                        const dist = U().dist(p, boss);
-                        if (dist < p.size + boss.size) {
-                            Game.Bosses.takeDamage(p.damage);
-                            hit = true;
-
-                            // Floating damage text
-                            if (Game.Effects && Game.Effects.spawnText) {
-                                Game.Effects.spawnText(p.x, p.y - 10, `-${p.damage}`, '#ffcc00');
-                            }
-                        }
-                    }
-                }
-
-                if (hit) {
-                    projs.splice(i, 1);
-                }
             }
         },
 

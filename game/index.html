@@ -3,21 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DARK DESCENT</title>
-    <link rel="stylesheet" href="css/style.css">
+    <title>Void Crawler — Engine Test</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #050508;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        canvas {
+            border: 1px solid #1a1a2e;
+            cursor: crosshair;
+        }
+    </style>
 </head>
 <body>
-    <canvas id="gameCanvas" width="960" height="640"></canvas>
-
-    <!-- Load order matters! -->
+    <canvas id="gameCanvas"></canvas>
     <script src="js/contracts.js"></script>
-    <script src="js/effects.js"></script>
-    <script src="js/levels.js"></script>
-    <script src="js/enemies.js"></script>
-    <script src="js/bosses.js"></script>
-    <script src="js/player.js"></script>
     <script src="js/engine.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/main.js"></script>
+    <script src="js/player.js"></script>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        Game.Engine.init(canvas);
+    </script>
 </body>
 </html>
