@@ -503,8 +503,9 @@
                     enemy.alive = false;
                     spawnDeathParticles(enemy);
 
-                    // Don't increment state.kills/score here — main.js does it via event
-                    Game.state.enemiesRemaining = this.count() - 1;
+                    Game.state.kills++;
+                    Game.state.score += enemy.score;
+                    Game.state.enemiesRemaining = this.count() - 1; // -1 because we haven't processed yet
 
                     Game.Events.emit('enemy-killed', {
                         type: enemy.type,
